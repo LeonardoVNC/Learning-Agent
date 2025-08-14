@@ -1,11 +1,11 @@
 import { Student } from "../entities/student.entity";
 export interface StudentRepositoryPort {
-    findByCode(code: number): Promise<Student | null>;
-    findByUserId(userId: number): Promise<Student | null>;
+    findByUserId(userId: string): Promise<Student | null>;
     create(
-        code: number, 
-        userId: string, 
-        name: string
+        userId: string,
+        code: number,
+        career?: string,
+        admissionYear?: number,
     ): Promise<Student>;
     list(): Promise<Student[]>;
 }

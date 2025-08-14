@@ -1,9 +1,9 @@
 export class Classes {
     constructor (
-        public readonly id: number,
+        public readonly id: string,
         public name: string,
         public semester: string,
-        public professorCode: number,
+        public teacherId: number,
         public isActive: boolean,
         public dateBegin: Date,
         public dateEnd: Date,
