@@ -3,7 +3,7 @@ export class Classes {
         public readonly id: string,
         public name: string,
         public semester: string,
-        public teacherId: number,
+        public teacherId: string,
         public isActive: boolean,
         public dateBegin: Date,
         public dateEnd: Date,
