@@ -26,7 +26,9 @@ export function ClassMenu() {
   const filteredClases = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     if (!term) return clasesSafe;
-    return clasesSafe.filter((cl) => (cl.name ?? "").toLowerCase().includes(term));
+    return clasesSafe.filter((cl) =>
+      (cl.name ?? "").toLowerCase().includes(term)
+    );
   }, [clasesSafe, searchTerm]);
 
   // 3) Actuales / Pasados derivados
@@ -60,11 +62,16 @@ export function ClassMenu() {
             <Card
               hoverable
               onClick={() => goToStudents(clase.id)}
-              style={{ width: "100%", height: 200, textAlign: "center", borderRadius: 20 }}
+              style={{
+                width: "100%",
+                height: 200,
+                textAlign: "center",
+                borderRadius: 20,
+              }}
             >
               <h2>{clase.name}</h2>
-              <p>Inicio: {dayjs(clase.dateBegin).format('DD/MM/YYYY')}</p>
-              <p>Fin: {dayjs(clase.dateEnd).format('DD/MM/YYYY')}</p>
+              <p>Inicio: {dayjs(clase.dateBegin).format("DD/MM/YYYY")}</p>
+              <p>Fin: {dayjs(clase.dateEnd).format("DD/MM/YYYY")}</p>
             </Card>
           </Col>
         ))}
@@ -74,14 +81,35 @@ export function ClassMenu() {
     );
 
   return (
-    <div>
+    <div
+      className="w-full lg:max-w-6xl lg:mx-auto space-y-4 sm:space-y-6"
+      style={{
+        maxWidth: 1200,
+        margin: "0 auto",
+        padding: "24px 24px",
+      }}
+    >
+      {/* Header */}
+      <div style={{ textAlign: "center", marginBottom: 32 }}>
+        <img
+          src="/src/assets/upb_logo.png"
+          alt="UPB Logo"
+          style={{ width: 350, height: "auto" }}
+        />
+      </div>
       <CursosForm
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         onSubmit={handleAddClase}
       />
 
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 24 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          marginBottom: 24,
+        }}
+      >
         <Space>
           <Input
             placeholder="Buscar curso"
@@ -91,7 +119,9 @@ export function ClassMenu() {
             style={{ width: 240 }}
           />
         </Space>
-        <Button type="primary" onClick={() => setModalOpen(true)}>Añadir</Button>
+        <Button type="primary" onClick={() => setModalOpen(true)}>
+          Añadir
+        </Button>
       </div>
 
       <h1>Cursos Actuales</h1>
