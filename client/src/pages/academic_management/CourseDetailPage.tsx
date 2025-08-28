@@ -18,7 +18,8 @@ import {
   FolderOutlined,
   CalendarOutlined,
   TeamOutlined,
-  BarChartOutlined
+  BarChartOutlined,
+  BookOutlined
 } from "@ant-design/icons";
 import useClasses from "../../hooks/useClasses";
 import useTeacher from "../../hooks/useTeacher";
@@ -215,24 +216,6 @@ export function CourseDetailPage() {
       render: () => "-"
     },
     {
-      title: "1er Parcial",
-      dataIndex: "1er_parcial",
-      key: "1er_parcial",
-      render: () => "-"
-    },
-    {
-      title: "2do Parcial",
-      dataIndex: "2do_parcial",
-      key: "2do_parcial",
-      render: () => "-"
-    },
-    {
-      title: "Final",
-      dataIndex: "final",
-      key: "final",
-      render: () => "-"
-    },
-    {
       title: "Acciones",
       key: "actions",
       render: () => (
@@ -415,14 +398,6 @@ export function CourseDetailPage() {
               <div style={{ backgroundColor: '#ffffff', padding: '32px' }}>
                 {hasStudents ? (
                   <>
-                    <div style={{ textAlign: 'center', marginBottom: 24 }}>
-                      <Space size="middle">
-                        <Button type="primary" size="large">1er Parcial</Button>
-                        <Button type="primary" size="large">2do Parcial</Button>
-                        <Button type="primary" size="large">Final</Button>
-                      </Space>
-                    </div>
-
                     {/* Tabla de estudiantes */}
                     <Table
                       columns={studentsColumns}
@@ -493,6 +468,26 @@ export function CourseDetailPage() {
                     Ir a Documentos
                   </Button>
                 </Empty>
+              </div>
+            </TabPane>
+
+            <TabPane
+              tab={
+                <span style={{ color: '#000', display: 'flex', alignItems: 'center', padding: '0 4px' }}>
+                  <BookOutlined style={{ color: '#000', marginRight: '6px', fontSize: '14px' }} />
+                  <span>Gestión de Exámenes</span>
+                </span>
+              }
+              key="exams"
+            >
+              <div style={{ backgroundColor: '#ffffff', padding: '32px' }}>
+                <div style={{ textAlign: 'center', padding: '64px 0' }}>
+                  <Empty description="No hay exámenes creados para este curso">
+                    <Text style={{ color: '#666', fontSize: '14px' }}>
+                      Los exámenes creados aparecerán aquí para su gestión
+                    </Text>
+                  </Empty>
+                </div>
               </div>
             </TabPane>
 
