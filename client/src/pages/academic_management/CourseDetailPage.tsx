@@ -17,7 +17,8 @@ import {
   UserOutlined,
   FolderOutlined,
   CalendarOutlined,
-  TeamOutlined
+  TeamOutlined,
+  BarChartOutlined
 } from "@ant-design/icons";
 import useClasses from "../../hooks/useClasses";
 import useTeacher from "../../hooks/useTeacher";
@@ -230,6 +231,23 @@ export function CourseDetailPage() {
       dataIndex: "final",
       key: "final",
       render: () => "-"
+    },
+    {
+      title: "Acciones",
+      key: "actions",
+      render: () => (
+        <Button
+          type="primary"
+          size="small"
+          icon={<BarChartOutlined />}
+          onClick={() => {
+            // Sin acción - será implementado por el equipo de Ángela
+            message.info("Funcionalidad en desarrollo");
+          }}
+        >
+          Ver progreso
+        </Button>
+      )
     }
   ];
 
