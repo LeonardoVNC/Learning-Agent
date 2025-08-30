@@ -2,8 +2,8 @@ export interface Clase {
   id: string;
   name: string;
   semester: string;
-  isActive: boolean;
+  teacherId: string;
+  courseId?: string;
   dateBegin: string;
   dateEnd: string;
-  courseId: string;
 }

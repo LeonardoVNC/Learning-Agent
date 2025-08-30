@@ -16,7 +16,9 @@ export const useClaseStore = create(
     (set) => ({
       clases: [],
       setClases: (items) => set({ clases: items }),
-      addClase: (clase) => set((state) => ({ clases: [...state.clases, clase] })),
+      addClase: (clase) => set((state) => ({ 
+        clases: Array.isArray(state.clases) ? [...state.clases, clase] : [clase] 
+      })),
       updateClase: (id, data) =>
         set((state) => ({
           clases: state.clases.map((clase) =>

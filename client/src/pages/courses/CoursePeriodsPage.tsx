@@ -1,78 +1,86 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useEffect, useState } from "react";
-import { Empty, Spin, Card, Row, Col, Button } from "antd";
+import { useEffect, useState, useCallback } from "react";
+import { Button, Card, Col, Empty, Row, Input, message } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
+import { courseService } from "../../services/course.service";
 import PageTemplate from "../../components/PageTemplate";
-import useCourses from "../../hooks/useCourses";
-import useClasses from "../../hooks/useClasses";
 import { CreatePeriodForm } from "../../components/CreatePeriodForm";
+import usePeriods from "../../hooks/usePeriods";
 import type { Course } from "../../interfaces/courseInterface";
 import type { Clase } from "../../interfaces/claseInterface";
 import { useUserContext } from "../../context/UserContext";
 import dayjs from "dayjs";
 
-export default function CoursePeriodsPage() {
+export function CoursePeriodsPage() {
   const { courseId } = useParams<{ courseId: string }>();
-  const { courses } = useCourses();
-  const { clases, createClass } = useClasses();
-  const { user } = useUserContext();
   const navigate = useNavigate();
+  const { user } = useUserContext();
   
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
-  const [periodsLoading, setPeriodsLoading] = useState(true);
-  const [coursePeriods, setCoursePeriods] = useState<Clase[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [creatingPeriod, setCreatingPeriod] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filteredPeriods, setFilteredPeriods] = useState<Clase[]>([]);
+
+  const { periods, createPeriod, fetchPeriodsByCourse } = usePeriods();
+
+  const loadCourseAndPeriods = useCallback(async () => {
+    if (!courseId) return;
+    
+    setLoading(true);
+    try {
+      // Cargar información del curso
+      const courseResponse = await courseService.getCourseById(courseId);
+      setCourse(courseResponse);
+
+      // Cargar períodos del curso - esto actualizará el estado del hook
+      await fetchPeriodsByCourse(courseId);
+    } catch (error) {
+      message.error("Error al cargar la información del curso");
+      console.error("Error loading course and periods:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [courseId, fetchPeriodsByCourse]);
 
   useEffect(() => {
-    if (!courseId) {
-      setLoading(false);
+    if (courseId) {
+      loadCourseAndPeriods();
+    }
+  }, [courseId, loadCourseAndPeriods]);
+
+  useEffect(() => {
+    const lower = searchTerm.trim().toLowerCase();
+    if (lower === "") {
+      setFilteredPeriods(periods);
       return;
     }
 
-    // Buscar el curso en la lista de cursos del hook
-    const foundCourse = courses.find((c) => c.id === courseId);
-    setCourse(foundCourse || null);
-    setLoading(false);
-  }, [courseId, courses]);
-
-  useEffect(() => {
-    const loadPeriods = async () => {
-      if (!courseId) return;
-      
-      setPeriodsLoading(true);
-      try {
-        const safeClases = Array.isArray(clases) ? clases : [];
-        const filteredPeriods = safeClases.filter((clase) => clase.courseId === courseId);
-        setCoursePeriods(filteredPeriods);
-      } catch (error) {
-        console.error("Error loading periods:", error);
-      } finally {
-        setPeriodsLoading(false);
-      }
-    };
-
-    loadPeriods();
-  }, [courseId, clases]);
-
-  const goToPeriod = (periodId: string) => {
-    navigate(`/classes/${periodId}`);
-  };
+    const filtered = periods.filter((period) =>
+      period.semester.toLowerCase().includes(lower) ||
+      period.name.toLowerCase().includes(lower)
+    );
+    setFilteredPeriods(filtered);
+  }, [searchTerm, periods]);
 
   const handleCreatePeriod = async (periodData: Omit<Clase, "id">) => {
     setCreatingPeriod(true);
     try {
-      await createClass(periodData);
-      setModalOpen(false);
-      const safeClases = Array.isArray(clases) ? clases : [];
-      const filteredPeriods = safeClases.filter((clase) => clase.courseId === courseId);
-      setCoursePeriods(filteredPeriods);
+      await createPeriod(periodData);
+      if (courseId) {
+        await fetchPeriodsByCourse(courseId);
+      }
     } catch (error) {
-      console.error("Error creating period:", error);
+      // El error ya se maneja en el hook
+      console.error(error);
     } finally {
       setCreatingPeriod(false);
     }
+  };
+
+  const goToPeriod = (periodId: string) => {
+    navigate(`/classes/${periodId}`);
   };
 
   const handleModalCancel = () => {
@@ -148,15 +156,15 @@ export default function CoursePeriodsPage() {
     return (
       <PageTemplate
         title="Períodos"
-        subtitle="Cargando información del curso..."
+        subtitle="Cargando información..."
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Materias", href: "/courses" },
-          { label: "Períodos" },
+          { label: "Cargando..." }
         ]}
       >
         <div style={{ textAlign: "center", padding: "50px" }}>
-          <Spin size="large" />
+          <div>Cargando curso y períodos...</div>
         </div>
       </PageTemplate>
     );
@@ -166,25 +174,31 @@ export default function CoursePeriodsPage() {
     return (
       <PageTemplate
         title="Curso no encontrado"
-        subtitle="El curso solicitado no existe"
+        subtitle="No se pudo cargar la información del curso"
         breadcrumbs={[
           { label: "Home", href: "/" },
           { label: "Materias", href: "/courses" },
+          { label: "Error" }
         ]}
       >
-        <Empty description="Curso no encontrado" />
+        <div style={{ textAlign: "center", padding: "50px" }}>
+          <Empty description="Curso no encontrado" />
+          <Button type="primary" onClick={() => navigate("/courses")}>
+            Volver a Materias
+          </Button>
+        </div>
       </PageTemplate>
     );
   }
 
   return (
     <PageTemplate
-      title={`Períodos - ${course.name}`}
-      subtitle="Gestiona los períodos académicos de este curso"
+      title={course.name}
+      subtitle="Períodos en los que se dictó esta materia"
       breadcrumbs={[
         { label: "Home", href: "/" },
         { label: "Materias", href: "/courses" },
-        { label: course.name },
+        { label: course.name }
       ]}
     >
       <div
@@ -194,23 +208,37 @@ export default function CoursePeriodsPage() {
           padding: "24px",
         }}
       >
-        {/* Header con botón crear período */}
+        {/* Header con búsqueda y botón crear */}
         <div
           style={{
             display: "flex",
-            justifyContent: "flex-end",
+            justifyContent: "space-between",
+            alignItems: "center",
             marginBottom: 24,
+            flexWrap: "wrap",
+            gap: "12px"
           }}
         >
+          <div>
+            <Input
+              placeholder="Buscar período..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              allowClear
+              style={{ 
+                width: 240,
+                borderRadius: 8
+              }}
+            />
+          </div>
           {user?.roles.includes("docente") && (
-            <Button
-              type="primary"
+            <Button 
+              type="primary" 
               icon={<PlusOutlined />}
               onClick={() => setModalOpen(true)}
               style={{ 
-                display: "flex", 
-                alignItems: "center",
-                height: "40px"
+                borderRadius: 8,
+                fontWeight: "500"
               }}
             >
               Crear Período
@@ -218,24 +246,19 @@ export default function CoursePeriodsPage() {
           )}
         </div>
 
-        {/* Contenido de períodos */}
-        {periodsLoading ? (
-          <div style={{ textAlign: "center", padding: "50px" }}>
-            <Spin size="large" />
-            <div style={{ marginTop: "16px" }}>Cargando períodos...</div>
-          </div>
-        ) : (
-          renderPeriodCards(coursePeriods)
-        )}
+        {/* Grid de períodos */}
+        {renderPeriodCards(filteredPeriods)}
 
         {/* Modal para crear período */}
-        <CreatePeriodForm
-          open={modalOpen}
-          onClose={handleModalCancel}
-          onSubmit={handleCreatePeriod}
-          course={course}
-          loading={creatingPeriod}
-        />
+        {course && (
+          <CreatePeriodForm
+            open={modalOpen}
+            onClose={handleModalCancel}
+            onSubmit={handleCreatePeriod}
+            course={course}
+            loading={creatingPeriod}
+          />
+        )}
       </div>
     </PageTemplate>
   );

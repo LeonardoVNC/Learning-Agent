@@ -23,4 +23,14 @@ export const courseService = {
       throw error;
     }
   },
+
+  async getCourseById(courseId: string): Promise<Course> {
+    try {
+      const response = await apiClient.get(`/academic/course/${courseId}`);
+      return response.data.data;
+    } catch (error) {
+      console.error("Failed to get course by id", error);
+      throw error;
+    }
+  },
 };

@@ -13,33 +13,22 @@ const useClasses = () => {
   const [students, setStudents] = useState<StudentInfo[]>([])
   const { user, fetchUser } = useUserContext();
 
-  /*
-  const fetchUser = async () => {
-    const authData = localStorage.getItem("auth");
-    if (!authData) {
-      console.log("Sin datos Auth guardados en localstorage");
-      return;
-    }
-    const parsedData = JSON.parse(authData);
-    const user = await meAPI(parsedData.accessToken);
-    setUserData(user);
-  };*/
-
   useEffect(() => {
     fetchClases();
     if (!user || user === null) {
-      fetchUser();
+      fetchUser()
     }
   }, []);
 
   const fetchClases = async () => {
-    const data = await claseService.getClases();
-    setClases(data);
-  };
+    const clases = await claseService.getClases()
+    setClases(clases);
+  }
 
   const createClass = async (newClase: Omit<Clase, 'id'>) => {
     const objClass = await claseService.createClase(newClase);
     addClase(objClass)
+    return objClass;
   }
 
   const fetchClase = async (id: string) => {
@@ -52,57 +41,52 @@ const useClasses = () => {
 
   const createStudents = async (newStudentGroup: Omit<StudentInfo, 'id'>) => {
     console.log(newStudentGroup)
-    // const newStudents = {
-    //   ...newStudentGroup,
-    //   id: uuidv4()
-    // }
-    //await studentService.createStudentGroup(newStudents)
-    //setStudents(newStudents)
+  }
+
+  const deleteClass = async (classId: string) => {
+    try {
+      const deleteResult = await claseService.softDeleteClase(classId, user?.id || "")
+      console.log("delete result: ", deleteResult)
+    } catch (error) {
+      console.error(`Error deleting class with id ${classId}`, error);
+    }
   }
 
   const updateClass = async (values: Clase) => {
     try {
-      const id = values.id;
-      const classData = {
-        name: values.name, 
-        semester: values.semester, 
-        teacherId: values.teacherId, 
-        dateBegin: values.dateBegin, 
-        dateEnd: values.dateEnd
-      }
-      await claseService.updateClase(id, classData)
-      return {
-        success: true
-      }
-    } catch {
-      console.error(`Error updating class with id ${values.id}`)
-      return {
-        success: false
-      }
+      if (!values.id) return;
+      const updatedClass = await claseService.updateClase(values.id, values);
+      setObjClass(updatedClass);
+      return updatedClass;
+    } catch (error) {
+      console.error("Error updating class", error);
+      throw error;
     }
   }
 
   const softDeleteClass = async (classId: string) => {
     try {
-      const userId = user?.id || "";
-      return await claseService.softDeleteClase(classId, userId);
+      const deleteResult = await claseService.softDeleteClase(classId, user?.id || "")
+      return deleteResult;
     } catch (error) {
-      console.error(`Error deleting class with id ${classId}`)
+      console.error(`Error soft deleting class with id ${classId}`, error);
+      throw error;
     }
   }
 
   return {
     clases,
-    fetchClases,
-    createClass,
-    fetchClase,
     objClass,
     curso,
     students,
+    createClass,
+    fetchClases,
+    fetchClase,
     createStudents,
+    deleteClass,
     updateClass,
-    softDeleteClass,
-  };
+    softDeleteClass
+  }
 }
 
 export default useClasses

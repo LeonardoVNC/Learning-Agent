@@ -22,11 +22,47 @@ export const claseService = {
     }
   },
 
-  async createClase(clase: Omit<Clase, 'id' | 'isActive' | 'name'>): Promise<Clase> {
+  async getClasesByCourseId(courseId: string): Promise<Clase[]> {
     try {
-          console.log("Valores que se envían al backend 2:", clase);
-      const response = await apiClient.post("/academic/classes", clase);
-      return response.data;
+      const response = await apiClient.get('/academic/classes');
+      const allClases: Clase[] = response.data.data || [];
+      
+      return allClases.filter(clase => {
+        return clase.courseId === courseId || clase.courseId === courseId.toString() || String(clase.courseId) === String(courseId);
+      });
+    } catch (error) {
+      console.error("Failed to fetch clases by course", error);
+      throw error;
+    }
+  },
+
+  async createClase(clase: Omit<Clase, "id">): Promise<Clase> {
+    try {
+      if (!clase.courseId) {
+        throw new Error("courseId is required to create a class");
+      }
+      
+      const backendData = {
+        name: clase.name,
+        semester: clase.semester,
+        courseId: clase.courseId,
+        dateBegin: new Date(clase.dateBegin).toISOString(),
+        dateEnd: new Date(clase.dateEnd).toISOString(),
+      };
+      
+      const response = await apiClient.post("/academic/classes", backendData);
+      
+      const createdClase: Clase = {
+        id: response.data.data.id,
+        name: response.data.data.name,
+        semester: response.data.data.semester,
+        teacherId: response.data.data.teacherId || clase.teacherId,
+        courseId: response.data.data.courseId || clase.courseId,
+        dateBegin: response.data.data.dateBegin,
+        dateEnd: response.data.data.dateEnd,
+      };
+      
+      return createdClase;
     } catch (error) {
       console.error("Failed to create clase", error);
       throw error;
@@ -57,14 +93,9 @@ export const claseService = {
       }
     }
   },
+};
 
-  async getCourseById(id: string): Promise<Clase> {
-    try {
-      const response = await apiClient.get(`/academic/classes/by-course/${id}`);
-      return response.data;
-    } catch (error) {
-      console.error("Failed to fetch course", error);
-      throw error;
-    }
-  },
+// Función auxiliar para obtener períodos por curso
+export const getPeriodsByCourse = async (courseId: string): Promise<Clase[]> => {
+  return claseService.getClasesByCourseId(courseId);
 };
