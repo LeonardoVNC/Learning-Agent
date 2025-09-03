@@ -41,6 +41,7 @@ export const CreateCourseForm = ({ open, onClose, onSubmit }: CreateCourseFormPr
     });
 
     const handleCancel = () => {
+        formik.resetForm();
         onClose();
     }
 
@@ -53,7 +54,7 @@ export const CreateCourseForm = ({ open, onClose, onSubmit }: CreateCourseFormPr
             open={open}
             onCancel={handleCancel}
             footer={[
-                <Button key="cancel" danger onClick={onClose}>
+                <Button key="cancel" danger onClick={handleCancel}>
                     Cancelar
                 </Button>,
                 <Button type="primary" onClick={handleSubmit}>
