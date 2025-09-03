@@ -44,11 +44,22 @@ export const CreateCourseForm = ({ open, onClose, onSubmit }: CreateCourseFormPr
         onClose();
     }
 
+    const handleSubmit = () => {
+        formik.handleSubmit()
+    }
+
     return (
         <Modal
             open={open}
             onCancel={handleCancel}
-            footer={null}
+            footer={[
+                <Button key="cancel" danger onClick={onClose}>
+                    Cancelar
+                </Button>,
+                <Button type="primary" onClick={handleSubmit}>
+                    Registrar materia
+                </Button>
+            ]}
             centered
             title="Registrar una nueva materia"
         >
@@ -77,14 +88,6 @@ export const CreateCourseForm = ({ open, onClose, onSubmit }: CreateCourseFormPr
                         onBlur={formik.handleBlur}
                     />
                 </Form.Item>
-
-
-                <Form.Item style={{ width: "70%" }}>
-                    <Button type="primary" htmlType="submit" style={{ width: "100%" }}>
-                        Guardar Cambios
-                    </Button>
-                </Form.Item>
-
             </Form>
         </Modal>
     )
