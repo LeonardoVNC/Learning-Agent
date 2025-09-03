@@ -15,10 +15,12 @@ export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentForm
     studentName: Yup.string()
       .required('Nombre requerido')
       .matches(/^[^!@$%^&*?{}|<>]*$/, "El nombre no puede contener caracteres especiales")
+      .matches(/^[^0-9]*$/, "El nombre no puede contener números")
       .max(30, "El nombre no puede tener más de 30 caracteres"),
     studentLastname: Yup.string()
       .required('Apellido requerido')
       .matches(/^[^!@$%^&*?{}|<>]*$/, "El apellido no puede contener caracteres especiales")
+      .matches(/^[^0-9]*$/, "El apellido no puede contener números")
       .max(30, "El apellido no puede tener más de 30 caracteres"),
     studentCode: Yup.string()
       .required('Código de estudiante requerido')
