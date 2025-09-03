@@ -1,4 +1,4 @@
-import { Modal, Form, Input, Button} from 'antd';
+import { Modal, Form, Input, Button } from 'antd';
 import { useFormik } from 'formik';
 import * as Yup from 'yup';
 
@@ -9,7 +9,7 @@ interface UploadStudentFormProps {
   onSubmit: (values: { studentName: string; studentLastname: string; studentCode: string }) => void;
 }
 
-export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentFormProps 
+export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentFormProps
 ) => {
   const validationSchema = Yup.object().shape({
     studentName: Yup.string().required('Nombre requerido'),
@@ -31,11 +31,24 @@ export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentForm
     }
   });
 
+  const handleSubmit = () => {
+    formik.handleSubmit()
+  }
+
   return (
-    <Modal open={open} onCancel={onClose} onOk={() => {}} footer={null} centered title="Añadir Estudiante">
-      <Form layout="vertical" style={{ display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column'}} onFinish={formik.handleSubmit}>
+    <Modal open={open} onCancel={onClose} onOk={() => { }}
+      footer={[
+        <Button key="cancel" onClick={onClose}>
+          Cancelar
+        </Button>,
+        <Button type="primary" onClick={handleSubmit}>
+          Inscribir estudiante
+        </Button>
+      ]}
+      centered title="Añadir Estudiante">
+      <Form layout="vertical" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column' }}>
         <Form.Item
-          style={{width:'100%'}}
+          style={{ width: '100%' }}
           label="Nombre"
           validateStatus={formik.errors.studentName && formik.touched.studentName ? 'error' : ''}
           help={formik.touched.studentName && formik.errors.studentName}
@@ -43,23 +56,18 @@ export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentForm
           <Input name="studentName" value={formik.values.studentName} onChange={formik.handleChange} onBlur={formik.handleBlur} />
         </Form.Item>
         <Form.Item
-          style={{width:'100%'}}
+          style={{ width: '100%' }}
           label="Apellido"
           validateStatus={formik.errors.studentLastname && formik.touched.studentLastname ? 'error' : ''}
           help={formik.touched.studentLastname && formik.errors.studentLastname}>
-            <Input name="studentLastname" value={formik.values.studentLastname} onChange={formik.handleChange} onBlur={formik.handleBlur} />
-          </Form.Item>
+          <Input name="studentLastname" value={formik.values.studentLastname} onChange={formik.handleChange} onBlur={formik.handleBlur} />
+        </Form.Item>
         <Form.Item
-            style={{width:'100%'}}
-            label="Código UPB"
-            validateStatus={formik.errors.studentCode && formik.touched.studentCode ? 'error' : ''}
-            help={formik.touched.studentCode && formik.errors.studentCode}>
-            <Input name="studentCode" value={formik.values.studentCode} onChange={formik.handleChange} onBlur={formik.handleBlur} />
-            </Form.Item>
-        <Form.Item style={{width:'70%'}}>
-          <Button type="primary" htmlType="submit" style={{ width: '100%' }}>
-            Guardar
-          </Button>
+          style={{ width: '100%' }}
+          label="Código UPB"
+          validateStatus={formik.errors.studentCode && formik.touched.studentCode ? 'error' : ''}
+          help={formik.touched.studentCode && formik.errors.studentCode}>
+          <Input name="studentCode" value={formik.values.studentCode} onChange={formik.handleChange} onBlur={formik.handleBlur} />
         </Form.Item>
       </Form>
     </Modal>
