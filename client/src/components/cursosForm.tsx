@@ -65,7 +65,7 @@ export const CursosForm = ({
       onSubmit({
         ...values,
         teacherId: user?.id || "",
-        id: clase?.id || "" ,
+        id: clase?.id || "",
       });
       resetForm();
       onClose();
@@ -83,11 +83,27 @@ export const CursosForm = ({
     value: `${t}${yearForSemester}`,
   }));
 
+  const handleSubmit = () => {
+    formik.handleSubmit()
+  }
+
+  const handleCancel = () => {
+    formik.resetForm();
+    onClose();
+  }
+
   return (
     <Modal
       open={open}
-      onCancel={onClose}
-      footer={null}
+      onCancel={handleCancel}
+      footer={[
+        <Button key="cancel" danger onClick={handleCancel}>
+          Cancelar
+        </Button>,
+        <Button type="primary" onClick={handleSubmit}>
+          {clase ? "Guardar Cambios" : "Registrar curso"}
+        </Button>
+      ]}
       centered
       title={clase ? "Editar Curso" : "Añadir Curso"}
     >
@@ -188,12 +204,6 @@ export const CursosForm = ({
               );
             }}
           />
-        </Form.Item>
-
-        <Form.Item style={{ width: "70%" }}>
-          <Button type="primary" htmlType="submit" style={{ width: "100%" }}>
-            {clase ? "Guardar Cambios" : "Guardar"}
-          </Button>
         </Form.Item>
       </Form>
     </Modal>
