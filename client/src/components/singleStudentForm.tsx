@@ -37,14 +37,19 @@ export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentForm
     }
   });
 
+  const handleCancel = () => {
+        formik.resetForm();
+        onClose();
+    }
+
   const handleSubmit = () => {
     formik.handleSubmit()
   }
 
   return (
-    <Modal open={open} onCancel={onClose} onOk={() => { }}
+    <Modal open={open} onCancel={handleCancel} onOk={() => { }}
       footer={[
-        <Button key="cancel" danger onClick={onClose}>
+        <Button key="cancel" danger onClick={handleCancel}>
           Cancelar
         </Button>,
         <Button type="primary" onClick={handleSubmit}>
