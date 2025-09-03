@@ -14,12 +14,15 @@ export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentForm
   const validationSchema = Yup.object().shape({
     studentName: Yup.string()
       .required('Nombre requerido')
-      .max(30, "El nombre no puede tener más de 40 caracteres"),
+      .matches(/^[^!@$%^&*?{}|<>]*$/, "El nombre no puede contener caracteres especiales")
+      .max(30, "El nombre no puede tener más de 30 caracteres"),
     studentLastname: Yup.string()
       .required('Apellido requerido')
-      .max(30, "El apellido no puede tener más de 40 caracteres"),
+      .matches(/^[^!@$%^&*?{}|<>]*$/, "El apellido no puede contener caracteres especiales")
+      .max(30, "El apellido no puede tener más de 30 caracteres"),
     studentCode: Yup.string()
       .required('Código de estudiante requerido')
+      .matches(/^[^!@$%^&*?{}|<>]*$/, "El código no puede contener caracteres especiales")
       .max(8, "El código no puede tener más de 8 dígitos")
   });
 
@@ -38,9 +41,9 @@ export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentForm
   });
 
   const handleCancel = () => {
-        formik.resetForm();
-        onClose();
-    }
+    formik.resetForm();
+    onClose();
+  }
 
   const handleSubmit = () => {
     formik.handleSubmit()
