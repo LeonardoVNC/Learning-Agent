@@ -23,6 +23,7 @@ export const CreateCourseForm = ({ open, onClose, onSubmit }: CreateCourseFormPr
     const validationSchema = Yup.object().shape({
         name: Yup.string()
             .required("Nombre requerido")
+            .max(40, "El nombre no puede tener más de 40 caracteres")
             .matches(/^[^!@$%^&*?{}|<>]*$/, "El nombre no puede contener caracteres especiales")
             .matches(/^(?=.*[a-zA-Z]).*$/, "El nombre debe contener al menos una letra")
     })
