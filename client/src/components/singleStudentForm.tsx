@@ -12,9 +12,15 @@ interface UploadStudentFormProps {
 export const SingleStudentForm = ({ open, onClose, onSubmit }: UploadStudentFormProps
 ) => {
   const validationSchema = Yup.object().shape({
-    studentName: Yup.string().required('Nombre requerido'),
-    studentLastname: Yup.string().required('Apellido requerido'),
-    studentCode: Yup.string().required('Código de estudiante requerido')
+    studentName: Yup.string()
+      .required('Nombre requerido')
+      .max(30, "El nombre no puede tener más de 40 caracteres"),
+    studentLastname: Yup.string()
+      .required('Apellido requerido')
+      .max(30, "El apellido no puede tener más de 40 caracteres"),
+    studentCode: Yup.string()
+      .required('Código de estudiante requerido')
+      .max(8, "El código no puede tener más de 8 dígitos")
   });
 
   const formik = useFormik({
