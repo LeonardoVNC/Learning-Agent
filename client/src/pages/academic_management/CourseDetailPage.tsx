@@ -9,7 +9,7 @@ import {
   UserOutlined,
   FolderOutlined,
   BookOutlined,
-  BarChartOutlined
+  BarChartOutlined,
 } from "@ant-design/icons";
 import useClasses from "../../hooks/useClasses";
 import useTeacher from "../../hooks/useTeacher";
@@ -30,6 +30,7 @@ import dayjs from "dayjs";
 import useStudents from "../../hooks/useStudents";
 import { useUserStore } from "../../store/userStore";
 import useCourses from "../../hooks/useCourses";
+import type { Student } from "../../interfaces/studentInterface";
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -37,8 +38,9 @@ const { TabPane } = Tabs;
 export function CourseDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { fetchClassById, actualClass, updateClass, softDeleteClass } = useClasses();
-  const { students, fetchStudentsByClass } = useStudents();
+  const { fetchClassById, actualClass, updateClass, softDeleteClass } =
+    useClasses();
+  const { students, fetchStudentsByClass, softDeleteStudent } = useStudents();
   const { enrollSingleStudent, enrollGroupStudents } = useEnrollment();
   const { getCourseByID } = useCourses();
   const { getTeacherInfoById } = useTeacher();
@@ -46,10 +48,17 @@ export function CourseDetailPage() {
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [safetyModalOpen, setSafetyModalOpen] = useState(false);
+  const [safetyModalConfig, setSafetyModalConfig] = useState({
+    title: "",
+    message: "",
+    onConfirm: () => {},
+  });
   const [singleStudentFormOpen, setSingleStudentFormOpen] = useState(false);
   const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
   const [teacherInfo, setTeacherInfo] = useState<TeacherInfo | null>(null);
+
+  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
 
   const [parsedStudents, setParsedStudents] = useState<
     Array<
@@ -94,14 +103,14 @@ export function CourseDetailPage() {
         try {
           const courseID = actualClass.courseId;
           const courseRes = await getCourseByID(courseID);
-          if (!courseRes.success) return
+          if (!courseRes.success) return;
 
           const teacherId = courseRes.data.teacherId;
           if (!teacherId) return;
 
           const teacherRes = await getTeacherInfoById(teacherId);
           if (teacherRes && teacherRes.success) {
-            const teacher = teacherRes.data
+            const teacher = teacherRes.data;
             if (teacher) setTeacherInfo(teacher);
           }
         } catch (error) {
@@ -118,41 +127,99 @@ export function CourseDetailPage() {
   const handleEditClass = async (values: Clase) => {
     const data = await updateClass(values);
     if (data.success) {
-      message.success(data.message)
+      message.success(data.message);
     } else {
       message.error("Error al actualizar el curso");
-      return
+      return;
     }
 
     setEditModalOpen(false);
     if (id) await fetchClassById(id);
   };
 
-  const handleDeleteCourse = () => setSafetyModalOpen(true);
+  const handleDeleteClass = () => {
+    setSafetyModalConfig({
+      title: "¿Eliminar curso?",
+      message: (
+        <span>
+          ¿Estás seguro de que quieres eliminar el curso{" "}
+          <strong>"{actualClass.name}"</strong>? Esta acción no se puede
+          deshacer.
+        </span>
+      ),
+      onConfirm: confirmDeleteClass,
+    });
+    setSafetyModalOpen(true);
+  };
 
-  const confirmDeleteCourse = async () => {
+  const handleDeleteStudent = (student: Student) => {
+    setStudentToDelete(student);
+    setSafetyModalConfig({
+      title: "¿Eliminar estudiante?",
+      message: (
+        <span>
+          ¿Estás seguro de que quieres eliminar al estudiante{" "}
+          <strong>
+            "{student.nombres} {student.apellidos}"
+          </strong>
+          ? Esta acción no se puede deshacer.
+        </span>
+      ),
+      onConfirm: () => confirmDeleteStudent(),
+    });
+    setSafetyModalOpen(true);
+  };
+
+  const confirmDeleteClass = async () => {
     try {
       if (!id) {
-        message.error("ID del curso no encontrado");
+        message.error("ID de la clase no encontrado");
         return;
       }
       const res = await softDeleteClass(id);
       if (!res.success) {
-        message.error(res.message);//AQUI
+        message.error(res.message); //AQUI
         return;
       }
       message.success(res.message);
       setTimeout(() => {
         if (user?.roles.includes("docente")) {
-          navigate("/courses")
+          navigate("/courses");
         } else {
-          navigate("/")
+          navigate("/");
         }
       }, 2000);
     } catch {
       message.error("Error al eliminar el curso");
     } finally {
       setSafetyModalOpen(false);
+    }
+  };
+
+  const confirmDeleteStudent = async () => {
+    try {
+      const res = await softDeleteStudent(studentToDelete?.id); //TODO: Id no existe en Student, pero tendría que haber algún endpoint que devuelva el id desde la tabla de user
+      if (!res.success) {
+        message.error(res.message);
+        return;
+      }
+      message.success(
+        `Estudiante ${studentToDelete?.nombres} ${studentToDelete?.apellidos} eliminado correctamente`
+      );
+      setTimeout(() => {
+        if (user?.roles.includes("docente")) {
+          navigate("/courses");
+        } else {
+          navigate("/");
+        }
+      }, 2000);
+
+      if (id) fetchStudentsByClass(id);
+    } catch {
+      message.error("Error al eliminar al estudiante");
+    } finally {
+      setSafetyModalOpen(false);
+      setStudentToDelete(null);
     }
   };
 
@@ -240,20 +307,31 @@ export function CourseDetailPage() {
     {
       title: "Acciones",
       key: "actions",
-      render: () => (
-        <Button
-          type="primary"
-          size="small"
-          icon={<BarChartOutlined />}
-          onClick={() => {
-            // Sin acción - será implementado por el equipo de Ángela
-            message.info("Funcionalidad en desarrollo");
-          }}
-        >
-          Ver progreso
-        </Button>
-      )
-    }
+      render: (_: any, record: Student) => (
+        <div className="flex gap-3">
+          <Button
+            type="primary"
+            size="small"
+            icon={<BarChartOutlined />}
+            onClick={() => {
+              // Sin acción - será implementado por el equipo de Ángela
+              message.info("Funcionalidad en desarrollo");
+            }}
+          >
+            Ver progreso
+          </Button>
+          <Button
+            danger
+            type="primary"
+            size="small"
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteStudent(record)}
+          >
+            Eliminar
+          </Button>
+        </div>
+      ),
+    },
   ];
 
   if (loading) {
@@ -322,7 +400,7 @@ export function CourseDetailPage() {
             danger
             type="primary"
             icon={<DeleteOutlined />}
-            onClick={handleDeleteCourse}
+            onClick={handleDeleteClass}
           >
             Eliminar Curso
           </Button>
@@ -368,37 +446,65 @@ export function CourseDetailPage() {
               }
               key="general"
             >
-              <div style={{ padding: '32px' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              <div style={{ padding: "32px" }}>
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "24px",
+                  }}
+                >
                   <div>
-                    <Text strong style={{ fontSize: '14px' }}>Nombre del curso:</Text>
-                    <div style={{ marginTop: '8px', marginBottom: '20px' }}>
-                      <Text style={{ fontSize: '16px' }}>{actualClass.name}</Text>
+                    <Text strong style={{ fontSize: "14px" }}>
+                      Nombre del curso:
+                    </Text>
+                    <div style={{ marginTop: "8px", marginBottom: "20px" }}>
+                      <Text style={{ fontSize: "16px" }}>
+                        {actualClass.name}
+                      </Text>
                     </div>
                   </div>
                   <div>
-                    <Text strong style={{ fontSize: '14px' }}>Gestión (semestre):</Text>
-                    <div style={{ marginTop: '8px', marginBottom: '20px' }}>
-                      <Text style={{ fontSize: '16px' }}>{actualClass.semester}</Text>
+                    <Text strong style={{ fontSize: "14px" }}>
+                      Gestión (semestre):
+                    </Text>
+                    <div style={{ marginTop: "8px", marginBottom: "20px" }}>
+                      <Text style={{ fontSize: "16px" }}>
+                        {actualClass.semester}
+                      </Text>
                     </div>
                   </div>
                   <div>
-                    <Text strong style={{ fontSize: '14px' }}>Fecha de inicio:</Text>
-                    <div style={{ marginTop: '8px', marginBottom: '20px' }}>
-                      <Text style={{ fontSize: '16px' }}>{dayjs(actualClass.dateBegin).format("DD/MM/YYYY")}</Text>
+                    <Text strong style={{ fontSize: "14px" }}>
+                      Fecha de inicio:
+                    </Text>
+                    <div style={{ marginTop: "8px", marginBottom: "20px" }}>
+                      <Text style={{ fontSize: "16px" }}>
+                        {dayjs(actualClass.dateBegin).format("DD/MM/YYYY")}
+                      </Text>
                     </div>
                   </div>
                   <div>
-                    <Text strong style={{ fontSize: '14px' }}>Fecha final:</Text>
-                    <div style={{ marginTop: '8px', marginBottom: '20px' }}>
-                      <Text style={{ fontSize: '16px' }}>{dayjs(actualClass.dateEnd).format("DD/MM/YYYY")}</Text>
+                    <Text strong style={{ fontSize: "14px" }}>
+                      Fecha final:
+                    </Text>
+                    <div style={{ marginTop: "8px", marginBottom: "20px" }}>
+                      <Text style={{ fontSize: "16px" }}>
+                        {dayjs(actualClass.dateEnd).format("DD/MM/YYYY")}
+                      </Text>
                     </div>
                   </div>
                   <div>
-                    <Text strong style={{ fontSize: '14px' }}>Docente asignado:</Text>
-                    <div style={{ marginTop: '8px', marginBottom: '20px' }}>
-                      <Text style={{ fontSize: '16px' }}>
-                        {teacherInfo ? `${teacherInfo.name} ${teacherInfo.lastname}` : actualClass.teacherId ? "Cargando..." : "No asignado"}
+                    <Text strong style={{ fontSize: "14px" }}>
+                      Docente asignado:
+                    </Text>
+                    <div style={{ marginTop: "8px", marginBottom: "20px" }}>
+                      <Text style={{ fontSize: "16px" }}>
+                        {teacherInfo
+                          ? `${teacherInfo.name} ${teacherInfo.lastname}`
+                          : actualClass.teacherId
+                          ? "Cargando..."
+                          : "No asignado"}
                       </Text>
                     </div>
                   </div>
@@ -407,9 +513,7 @@ export function CourseDetailPage() {
                       Horarios:
                     </Text>
                     <div style={{ marginTop: "8px", marginBottom: "20px" }}>
-                      <Text style={{ fontSize: "16px" }}>
-                        Por definir
-                      </Text>
+                      <Text style={{ fontSize: "16px" }}>Por definir</Text>
                     </div>
                   </div>
                 </div>
@@ -494,14 +598,22 @@ export function CourseDetailPage() {
 
             <TabPane
               tab={
-                <span style={{ display: 'flex', alignItems: 'center', padding: '0 4px' }}>
-                  <InboxOutlined style={{ marginRight: '6px', fontSize: '14px' }} />
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0 4px",
+                  }}
+                >
+                  <InboxOutlined
+                    style={{ marginRight: "6px", fontSize: "14px" }}
+                  />
                   <span>Materiales</span>
                 </span>
               }
               key="materials"
             >
-              <div style={{ textAlign: 'center', padding: '64px' }}>
+              <div style={{ textAlign: "center", padding: "64px" }}>
                 <Empty description="Funcionalidad de materiales en desarrollo">
                   <Button
                     type="primary"
@@ -516,17 +628,25 @@ export function CourseDetailPage() {
 
             <TabPane
               tab={
-                <span style={{ display: 'flex', alignItems: 'center', padding: '0 4px' }}>
-                  <BookOutlined style={{ marginRight: '6px', fontSize: '14px' }} />
+                <span
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    padding: "0 4px",
+                  }}
+                >
+                  <BookOutlined
+                    style={{ marginRight: "6px", fontSize: "14px" }}
+                  />
                   <span>Gestión de Exámenes</span>
                 </span>
               }
               key="exams"
             >
-              <div style={{ padding: '32px' }}>
-                <div style={{ textAlign: 'center', padding: '64px 0' }}>
+              <div style={{ padding: "32px" }}>
+                <div style={{ textAlign: "center", padding: "64px 0" }}>
                   <Empty description="No hay exámenes creados para este curso">
-                    <Text style={{ fontSize: '14px' }}>
+                    <Text style={{ fontSize: "14px" }}>
                       Los exámenes creados aparecerán aquí para su gestión
                     </Text>
                   </Empty>
@@ -554,7 +674,7 @@ export function CourseDetailPage() {
               }
               key="syllabus"
             >
-              <div style={{ textAlign: 'center', padding: '64px' }}>
+              <div style={{ textAlign: "center", padding: "64px" }}>
                 <Empty description="Sílabo no disponible">
                   <Button type="primary" disabled style={{ marginTop: "16px" }}>
                     Subir Sílabo
@@ -575,10 +695,13 @@ export function CourseDetailPage() {
 
         <SafetyModal
           open={safetyModalOpen}
-          onCancel={() => setSafetyModalOpen(false)}
-          onConfirm={confirmDeleteCourse}
-          title="¿Eliminar curso?"
-          message={`¿Estás seguro de que quieres eliminar el curso "${actualClass.name}"? Esta acción no se puede deshacer.`}
+          onCancel={() => {
+            setSafetyModalOpen(false);
+            setStudentToDelete(null);
+          }}
+          onConfirm={safetyModalConfig.onConfirm}
+          title={safetyModalConfig.title}
+          message={safetyModalConfig.message}
           confirmText="Sí, eliminar"
           cancelText="Cancelar"
           danger
