@@ -30,7 +30,7 @@ import dayjs from "dayjs";
 import useStudents from "../../hooks/useStudents";
 import { useUserStore } from "../../store/userStore";
 import useCourses from "../../hooks/useCourses";
-import type { Student } from "../../interfaces/studentInterface";
+import type { StudentInfo } from "../../interfaces/studentInterface";
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -40,8 +40,9 @@ export function CourseDetailPage() {
   const navigate = useNavigate();
   const { fetchClassById, actualClass, updateClass, softDeleteClass } =
     useClasses();
-  const { students, fetchStudentsByClass, softDeleteStudent } = useStudents();
-  const { enrollSingleStudent, enrollGroupStudents } = useEnrollment();
+  const { students, fetchStudentsByClass } = useStudents();
+  const { enrollSingleStudent, enrollGroupStudents, softDeleteStudent } =
+    useEnrollment();
   const { getCourseByID } = useCourses();
   const { getTeacherInfoById } = useTeacher();
   const user = useUserStore((s) => s.user);
@@ -58,7 +59,9 @@ export function CourseDetailPage() {
 
   const [teacherInfo, setTeacherInfo] = useState<TeacherInfo | null>(null);
 
-  const [studentToDelete, setStudentToDelete] = useState<Student | null>(null);
+  const [studentToDelete, setStudentToDelete] = useState<StudentInfo | null>(
+    null
+  );
 
   const [parsedStudents, setParsedStudents] = useState<
     Array<
@@ -103,7 +106,7 @@ export function CourseDetailPage() {
         try {
           const courseID = actualClass.courseId;
           const courseRes = await getCourseByID(courseID);
-          if (!courseRes.success) return;
+          if (courseRes.state === "error") return;
 
           const teacherId = courseRes.data.teacherId;
           if (!teacherId) return;
@@ -126,7 +129,7 @@ export function CourseDetailPage() {
 
   const handleEditClass = async (values: Clase) => {
     const data = await updateClass(values);
-    if (data.success) {
+    if (data.state === "success") {
       message.success(data.message);
     } else {
       message.error("Error al actualizar el curso");
@@ -152,7 +155,7 @@ export function CourseDetailPage() {
     setSafetyModalOpen(true);
   };
 
-  const handleDeleteStudent = (student: Student) => {
+  const handleDeleteStudent = (student: StudentInfo) => {
     setStudentToDelete(student);
     setSafetyModalConfig({
       title: "¿Eliminar estudiante?",
@@ -160,12 +163,12 @@ export function CourseDetailPage() {
         <span>
           ¿Estás seguro de que quieres eliminar al estudiante{" "}
           <strong>
-            "{student.nombres} {student.apellidos}"
+            "{student.name} {student.lastname}"
           </strong>
           ? Esta acción no se puede deshacer.
         </span>
       ),
-      onConfirm: () => confirmDeleteStudent(),
+      onConfirm: confirmDeleteStudent,
     });
     setSafetyModalOpen(true);
   };
@@ -198,22 +201,15 @@ export function CourseDetailPage() {
 
   const confirmDeleteStudent = async () => {
     try {
-      const res = await softDeleteStudent(studentToDelete?.id); //TODO: Id no existe en Student, pero tendría que haber algún endpoint que devuelva el id desde la tabla de user
-      if (!res.success) {
+      if (!studentToDelete) return;
+      const res = await softDeleteStudent(studentToDelete.userId);
+      if (res.state !== "success") {
         message.error(res.message);
         return;
       }
       message.success(
-        `Estudiante ${studentToDelete?.nombres} ${studentToDelete?.apellidos} eliminado correctamente`
+        `Estudiante eliminado correctamente`
       );
-      setTimeout(() => {
-        if (user?.roles.includes("docente")) {
-          navigate("/courses");
-        } else {
-          navigate("/");
-        }
-      }, 2000);
-
       if (id) fetchStudentsByClass(id);
     } catch {
       message.error("Error al eliminar al estudiante");
@@ -307,7 +303,7 @@ export function CourseDetailPage() {
     {
       title: "Acciones",
       key: "actions",
-      render: (_: any, record: Student) => (
+      render: (_: any, record: any) => (
         <div className="flex gap-3">
           <Button
             type="primary"
@@ -547,7 +543,7 @@ export function CourseDetailPage() {
                     <Table
                       columns={studentsColumns}
                       dataSource={students}
-                      rowKey={(record) => record.code}
+                      rowKey={(record) => record.userId}
                       pagination={{
                         position: ["bottomCenter"],
                         showSizeChanger: false,

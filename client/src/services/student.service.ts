@@ -11,13 +11,4 @@ export const studentService = {
       throw error;
     }
   },
-  async softDeleteStudent(id: string) {
-    try {
-      const response = await apiClient.put(`/enrollment/remove/${id}`); //TODO: Conectar con el endPoint correspondiente
-      return response.data
-    } catch (error) {
-      console.error("Failed to soft-delete student", error);
-      throw error;
-    }
-  },
 };

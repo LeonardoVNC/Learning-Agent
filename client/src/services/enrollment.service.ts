@@ -22,4 +22,13 @@ export const enrollmentService = {
       throw error;
     }
   },
+  async softDeleteStudent(id: string) {
+    try {
+      const response = await apiClient.put(`/students/remove/${id}`);
+      return response.data
+    } catch (error) {
+      console.error("Failed to soft-delete student", error);
+      throw error;
+    }
+  },
 };
