@@ -81,7 +81,7 @@ export function TeacherCoursePage() {
       return
     }
     const res = await createCourse(values.name);
-    if (res.state == "error"){
+    if (res.state == "error") {
       message.error(res.message)
       return
     }
@@ -97,11 +97,12 @@ export function TeacherCoursePage() {
           breadcrumbs={[{ label: "Home", href: "/" }, { label: "Materias" }]}
         >
           <div
-            className="w-full lg:max-w-6xl lg:mx-auto space-y-4 sm:space-y-6"
             style={{
-              maxWidth: 1200,
-              margin: "0 auto",
-              padding: "24px 24px",
+              maxWidth: '100%',
+              width: '100%',
+              margin: '0 auto',
+              padding: '24px 16px',
+              boxSizing: 'border-box',
             }}
           >
             <CreateCourseForm
@@ -112,7 +113,9 @@ export function TeacherCoursePage() {
             <div
               style={{
                 display: "flex",
+                flexWrap: "wrap",
                 justifyContent: "space-between",
+                gap: 12,
                 marginBottom: 24,
               }}
             >
@@ -122,7 +125,7 @@ export function TeacherCoursePage() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   allowClear
-                  style={{ width: 240 }}
+                  style={{ minWidth: 120, maxWidth: 300, width: '100%' }}
                 />
               </Space>
               {user?.roles.includes("docente") && (
@@ -134,35 +137,37 @@ export function TeacherCoursePage() {
             </div>
 
             {filteredCourses.length > 0 ? (
-              <>{filteredCourses.map((course) => (
-                <CustomCard
-                  status="default"
-                  style={{ marginBottom: "16px" }}
-                  onClick={() => goToCourse(course.id)}
-                  key={course.id}
-                >
-                  <CustomCard.Header
-                    icon={<SolutionOutlined />}
-                    title={course.name}
-                  />
-                  <CustomCard.Description>
-                    {`Vea a detalle los periodos que ha dictado en ${course.name}`}
-                  </CustomCard.Description>
-                  <CustomCard.Actions>
-                    <Button
-                      type="primary"
-                      onClick={(e) => goToExams(course.id, e)}
-                    >
-                      Exámenes
-                    </Button>
-                    <Button
-                      onClick={(e) => goToMaterials(course.id, e)}
-                    >
-                      Materiales
-                    </Button>
-                  </CustomCard.Actions>
-                </CustomCard>
-              ))}</>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 24, maxWidth: 1200 }}>
+                {filteredCourses.map((course) => (
+                  <CustomCard
+                    status="default"
+                    style={{ marginBottom: "16px" }}
+                    onClick={() => goToCourse(course.id)}
+                    key={course.id}
+                  >
+                    <CustomCard.Header
+                      icon={<SolutionOutlined />}
+                      title={course.name}
+                    />
+                    <CustomCard.Description>
+                      {`Vea a detalle los periodos que ha dictado en ${course.name}`}
+                    </CustomCard.Description>
+                    <CustomCard.Actions>
+                      <Button
+                        type="primary"
+                        onClick={(e) => goToExams(course.id, e)}
+                      >
+                        Exámenes
+                      </Button>
+                      <Button
+                        onClick={(e) => goToMaterials(course.id, e)}
+                      >
+                        Materiales
+                      </Button>
+                    </CustomCard.Actions>
+                  </CustomCard>
+                ))}
+              </div>
             ) : (
               <Empty description="No hay materías todavía." />
             )}
