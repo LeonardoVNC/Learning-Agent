@@ -6,6 +6,7 @@ import type { Course } from "../interfaces/courseInterface";
 const useCourses = () => {
     const [actualCourse, setActualCourse] = useState<Course>()
     const [courses, setCourses] = useState<Course[]>([]);
+    const [coursesSet, setCoursesSet] = useState<Set<string>>();
     const user = useUserStore((s) => s.user);
     const fetchUser = useUserStore((s) => s.fetchUser);
 
@@ -17,6 +18,14 @@ const useCourses = () => {
         };
         prepareHook();
     }, [user]);
+
+    useEffect(() => {
+        const set = new Set<string>();
+        courses.forEach((course: Course) => {
+            set.add(course.name.toLowerCase().trim());
+        })
+        setCoursesSet(set)
+    },[courses])
 
     //Endpoints GET
     const getCourseByID = async (courseId: string) => {
@@ -49,6 +58,13 @@ const useCourses = () => {
             return {
                 state: "error",
                 message: "No se ha cargado la información del usuario"
+            }
+        }
+
+        if(coursesSet?.has(name.toLowerCase().trim())) {
+            return {
+                state: "error",
+                message: "Ya se ha registrado una materia con ese nombre"
             }
         }
 
