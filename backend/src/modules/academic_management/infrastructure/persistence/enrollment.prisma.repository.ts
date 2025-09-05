@@ -27,6 +27,21 @@ export class EnrollmentPrismaRepository implements EnrollmentRepositoryPort {
         ));
     };
 
+    async findByStudentAndClass(studentId: string, classId: string): Promise<Enrollment | null> {
+      const e = await this.prisma.enrollment.findUnique({
+        where: {
+          studentId_classId: {
+            studentId,
+            classId,
+          },
+        },
+      });
+
+      if (!e) return null;
+
+      return new Enrollment(e.studentId, e.classId, e.isActive);
+    }
+
     async create(studentId: string, classId: string): Promise<Enrollment> {
         const newEnrollment = await this.prisma.enrollment.create({
             data: {
@@ -51,5 +66,17 @@ export class EnrollmentPrismaRepository implements EnrollmentRepositoryPort {
         ));
     };
 
-
+    async softDelete(studentId: string, classId:string): Promise<Enrollment> {
+        return this.prisma.enrollment.update({
+        where: {
+                studentId_classId: { 
+                studentId,
+                classId,
+            },
+        },
+            data: {
+                isActive: false,
+            },
+        });
+    };   
 }
