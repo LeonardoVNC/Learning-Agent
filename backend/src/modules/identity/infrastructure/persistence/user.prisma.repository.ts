@@ -28,16 +28,17 @@ export class UserPrismaRepository implements UserRepositoryPort {
       : null;
   }
 
-  async create(name: string, lastname: string, email: string, passwordHash: string, isActive?: boolean): Promise<User> {
-    const user = await this.prisma.user.create({
-      data: {
-        name,
-        lastname,
-        email,
-        password: passwordHash,
-        isActive
-      }
-    });
+  async create(name: string, lastname: string, email: string, passwordHash: string, isActive?: boolean, roleId?: string,): Promise<User> {
+    const data: any = {
+      name,
+      lastname,
+      email,
+      password: passwordHash,
+      isActive,
+    }
+    if (roleId) data.roles = { create: [{ roleId }] };
+    
+    const user = await this.prisma.user.create({ data });
     return new User(
       user.id,
       user.email,

@@ -26,9 +26,10 @@ import { CreateCourseUseCase } from './application/commands/create-course.usecas
 import { GetCoursesByTeacherUseCase } from './application/queries/get-courses-by-teacher.usecase';
 import { GetClassesByCourseUseCase } from './application/queries/get-classes-by-course.usecase';
 import { GetCourseByIdUseCase } from './application/queries/get-course-by-id.usecase';
+import { RbacModule } from '../rbac/rbac.module';
 
 @Module({
-  imports: [PrismaModule,IdentityModule],
+  imports: [PrismaModule,IdentityModule, RbacModule],
   controllers: [AcademicManagementController],
   providers: [
     {provide: CLASSES_REPO,  useClass: ClassesPrismaRepository }  ,

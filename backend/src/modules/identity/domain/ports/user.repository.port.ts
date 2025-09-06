@@ -9,6 +9,7 @@ export interface UserRepositoryPort {
     email: string,
     passwordHash: string,
     isActive?: boolean,
+    roleId?: string,
   ): Promise<User>;
   update(
     userId: string,

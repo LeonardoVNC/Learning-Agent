@@ -1,9 +1,10 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
-import { ENROLLMENT_REPO, STUDENT_REPO, CLASSES_REPO, USER_REPO, HASHER } from "../../tokens";
+import { ENROLLMENT_REPO, STUDENT_REPO, CLASSES_REPO, USER_REPO, HASHER, ROLE_REPO } from "../../tokens";
 import type { EnrollmentRepositoryPort } from "../../domain/ports/enrollment.repository.ports";
 import type { StudentRepositoryPort } from "../../domain/ports/student.repository.ports";
 import type { ClassesRepositoryPort } from "../../domain/ports/classes.repository.ports";
 import type { UserRepositoryPort } from "src/modules/identity/domain/ports/user.repository.port";
+import type  { RoleRepositoryPort } from "src/modules/rbac/domain/ports/role.repository.port";
 import { AlreadyCreatedError, InternalServerError, NotFoundError } from "src/shared/handler/errors";
 import { BcryptHasher } from "src/modules/identity/infrastructure/crypto/bcrypt.hasher";
 
@@ -15,7 +16,8 @@ export class EnrollSingleStudentUseCase {
         @Inject(STUDENT_REPO) private readonly studentRepo: StudentRepositoryPort,
         @Inject(CLASSES_REPO) private readonly classesRepo: ClassesRepositoryPort,
         @Inject(USER_REPO) private readonly userRepo: UserRepositoryPort,
-        @Inject(HASHER) private readonly hasher: BcryptHasher
+        @Inject(HASHER) private readonly hasher: BcryptHasher,
+        @Inject(ROLE_REPO) private readonly roleRepo: RoleRepositoryPort,
     ) {}
 
     async execute(input: { studentName: string; studentLastname: string; studentCode: string; classId: string }) {
@@ -42,14 +44,23 @@ export class EnrollSingleStudentUseCase {
     }
 
     async handleNewUser(studentName: string, studentLastname: string, studentCode: string) {
-        const password = `${this.fixedString(studentLastname+studentCode)}`
+        const studentRole = await this.roleRepo.findByName('estudiante')
+        const studentRoleId = studentRole?.id
+        if (!studentRole || !studentRoleId) {
+            this.logger.error("Error fetching studentRoleId single enrollment endpoint")
+            throw new InternalServerError("Error creando al usuario");
+        }
+        
+        const password = `${this.fixedString(studentLastname+studentCode)}UPB2025`
         const hash = await this.hasher.hash(password)
 
         const newUser = await this.userRepo.create(
             studentName,
             studentLastname,
             `${this.fixedString(studentName + studentLastname + studentCode)}@upb.edu`,
-            hash
+            hash,
+            true,
+            studentRoleId,
         );
         
         if (!newUser) {

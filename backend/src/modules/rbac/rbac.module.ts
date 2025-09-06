@@ -27,6 +27,6 @@ import { IdentityModule } from '../identity/identity.module';
     ListPermissionsUseCase,
     GetRolesForUserUseCase,
   ],
-  exports: [GetRolesForUserUseCase],
+  exports: [GetRolesForUserUseCase, ROLE_REPO],
 })
 export class RbacModule {}
