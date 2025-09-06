@@ -36,6 +36,6 @@ import { RbacModule } from '../rbac/rbac.module';
     RbacAuthzAdapter,
     { provide: AUTHZ_PORT, useClass: RbacAuthzAdapter },
   ],
-  exports: [TOKEN_SERVICE],
+  exports: [TOKEN_SERVICE, USER_REPO],
 })
 export class IdentityModule {}

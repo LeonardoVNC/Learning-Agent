@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { TEACHER_REPO, USER_REPO } from "../../tokens";
-import type { UserRepositoryPort } from "../../domain/ports/user.repository.ports";
+import type { UserRepositoryPort } from "src/modules/identity/domain/ports/user.repository.port";
 import type { ProfessorRepositoryPort } from "../../domain/ports/teacher.repository.ports";
 import { TeacherInfoDTO } from "../../infrastructure/http/dtos/response.teacher-info.dto";
 import { NotFoundError } from "src/shared/handler/errors";

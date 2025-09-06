@@ -3,7 +3,7 @@ import { ENROLLMENT_REPO, STUDENT_REPO, CLASSES_REPO, USER_REPO } from "../../to
 import type { EnrollmentRepositoryPort } from "../../domain/ports/enrollment.repository.ports";
 import type { StudentRepositoryPort } from "../../domain/ports/student.repository.ports";
 import type { ClassesRepositoryPort } from "../../domain/ports/classes.repository.ports";
-import type { UserRepositoryPort } from "../../domain/ports/user.repository.ports";
+import type { UserRepositoryPort } from "src/modules/identity/domain/ports/user.repository.port";
 import { AlreadyCreatedError, InternalServerError, NotFoundError } from "src/shared/handler/errors";
 
 @Injectable()
