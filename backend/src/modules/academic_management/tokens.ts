@@ -4,4 +4,4 @@ export const STUDENT_REPO = Symbol('StudentRepositoryPort');
 export const TEACHER_REPO = Symbol('TeacherRepositoryPort')
 export const ENROLLMENT_REPO = Symbol('EnrollmentRepositoryPort');
 
-export { USER_REPO } from "../identity/tokens";
+export { USER_REPO, HASHER } from "../identity/tokens";
