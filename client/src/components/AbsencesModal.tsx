@@ -4,7 +4,6 @@ import type { StudentInfo } from "../interfaces/studentInterface";
 interface Absence {
   id: string;
   date: string;
-  reason?: string;
 }
 
 interface AbsencesModalProps {
@@ -24,16 +23,10 @@ function AbsencesModal({
 }: AbsencesModalProps) {
   const columns = [
     {
-      title: "Fecha",
+      title: "Fechas de ausencia",
       dataIndex: "date",
       key: "date",
-    },
-    {
-      title: "Motivo",
-      dataIndex: "reason",
-      key: "reason",
-      render: (value: string) => value || "-",
-    },
+    }
   ];
 
   return (
