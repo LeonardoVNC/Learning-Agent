@@ -35,6 +35,7 @@ import { processFile } from "../../utils/enrollGroupByFile";
 import type { StudentInfo } from "../../interfaces/studentInterface";
 import CourseExamsPanel from "../courses/CourseExamsPanel";
 import AttendanceModal from "../../components/AttendanceModal";
+import AbsencesModal from "../../components/AbsencesModal";
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -81,6 +82,13 @@ export function CourseDetailPage() {
   const [loading, setLoading] = useState(true);
 
   const [attendanceModalOpen, setAttendanceModalOpen] = useState(false);
+
+  const [absencesModalOpen, setAbsencesModalOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<
+    StudentInfo | undefined
+  >(undefined);
+  const [studentAbsences, setStudentAbsences] = useState<any[]>([]);
+  const [loadingAbsences, setLoadingAbsences] = useState(false);
 
   const fetchPeriod = async () => {
     if (!id) return;
@@ -299,10 +307,6 @@ export function CourseDetailPage() {
     setSafetyModalOpen(false);
   };
 
-  const goToExams = () => {
-    navigate(`/exams`);
-  };
-
   const studentsColumns = [
     {
       title: "Código",
@@ -321,11 +325,25 @@ export function CourseDetailPage() {
     },
 
     {
-      title: "Asistencia",
-      dataIndex: "asistencia",
-      key: "asistencia",
-      render: () => "-",
+      title: "Ausencias",
+      dataIndex: "absences",
+      key: "absences",
+      render: (_: any, record: StudentInfo) => (
+        <Button
+          type="link"
+          onClick={async () => {
+            setSelectedStudent(record);
+            setAbsencesModalOpen(true);
+            setLoadingAbsences(true);
+            //TODO: Conectar con el backend para traer las ausencias
+            //const absences = await fetchAbsencesByStudent(record.userId);
+          }}
+        >
+          {0}
+        </Button>
+      ),
     },
+
     {
       title: "Acciones",
       key: "actions",
@@ -849,6 +867,14 @@ export function CourseDetailPage() {
           open={attendanceModalOpen}
           onClose={() => setAttendanceModalOpen(false)}
           students={students ? students : []}
+        />
+
+        <AbsencesModal
+          open={absencesModalOpen}
+          onClose={() => setAbsencesModalOpen(false)}
+          student={selectedStudent}
+          absences={studentAbsences}
+          loading={loadingAbsences}
         />
       </div>
     </PageTemplate>
