@@ -361,7 +361,7 @@ export function CourseDetailPage() {
       <PageTemplate
         title="Cargando..."
         subtitle="Cargando información del curso"
-        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Clases" }]}
+        breadcrumbs={[{ label: "Home", href: "/" }, { label: "Períodos" }]}
       >
         <div style={{ padding: "2rem", textAlign: "center" }}>
           <Text>Cargando datos del curso...</Text>
@@ -383,7 +383,7 @@ export function CourseDetailPage() {
         <div style={{ padding: "2rem", textAlign: "center" }}>
           <Empty description="Curso no encontrado" />
           <Button type="primary" onClick={() => navigate("/classes")}>
-            Volver a Clases
+            Volver a Períodos
           </Button>
         </div>
       </PageTemplate>

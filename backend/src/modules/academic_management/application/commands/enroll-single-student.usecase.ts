@@ -20,7 +20,7 @@ export class EnrollSingleStudentUseCase {
         const ojbClass = await this.classesRepo.findById(input.classId);
         if (!ojbClass) {
             this.logger.error(`Class not found with ID ${input.classId}`)
-            throw new NotFoundError(`No se ha podido recupear la información de la clase`)
+            throw new NotFoundError(`No se ha podido recupear la información del período académico`);
         }
 
         let student = await this.studentRepo.findByCode(input.studentCode);
@@ -42,7 +42,7 @@ export class EnrollSingleStudentUseCase {
                 await this.enrollmentRepo.enableEnrollment(student.userId,input.classId);
                 return { ...existingEnrollment, isActive: true };
             }
-            throw new AlreadyCreatedError(`Este estudiante ya se encuentra inscrito en la clase`);
+            throw new AlreadyCreatedError(`Este estudiante ya se encuentra inscrito en el período académico`);
         }
 
         const enrollment = await this.enrollmentRepo.create(student.userId, input.classId);

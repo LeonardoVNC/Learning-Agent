@@ -19,7 +19,7 @@ export class SoftDeleteClassUseCase {
         const objClass = await this.classRepo.findById(input.classId)
         if (!objClass) {
             this.logger.error(`Class not found with id ${input.classId}`)
-            throw new NotFoundError(`No se ha podido recuprar la información de la clase}`)
+            throw new NotFoundError(`No se ha podido recuprar la información del período académico}`)
         }
 
         const course = await this.courseRepo.findById(objClass.courseId)

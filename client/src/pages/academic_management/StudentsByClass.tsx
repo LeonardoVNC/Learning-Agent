@@ -195,7 +195,7 @@ export function StudentsByClass() {
       subtitle={`Lista de datos del curso ${actualClass?.name}`}
       breadcrumbs={[
         { label: "Home", href: "/" },
-        { label: "Clases", href: "/classes" },
+        { label: "Períodos", href: "/classes" },
         { label: `${actualClass?.name}`, href: `/classes/${actualClass?.id}` },
       ]}
     >

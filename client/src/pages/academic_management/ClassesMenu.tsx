@@ -52,16 +52,16 @@ export function ClassMenu() {
   }, [searchTerm, classes]);
 
   const goToReinforcement = (id: string) => {
-    navigate(`/reinforcement/${id}`)
-  }
+    navigate(`/reinforcement/${id}`);
+  };
 
   return (
     <>
       {user?.roles.includes("estudiante") ? (
         <PageTemplate
-          title="Clases"
-          subtitle="Consulta a detalle información acerca de las clases en las que te encuentras inscrito"
-          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Clases" }]}
+          title="Períodos Académicos"
+          subtitle="Consulta a detalle información acerca de los períodos académicos en las que te encuentras inscrito"
+          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Períodos" }]}
         >
           <div
             className="w-full lg:max-w-6xl lg:mx-auto space-y-4 sm:space-y-6"
@@ -80,7 +80,7 @@ export function ClassMenu() {
             >
               <Space>
                 <Input
-                  placeholder="Buscar curso"
+                  placeholder="Buscar período"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   allowClear
@@ -90,32 +90,34 @@ export function ClassMenu() {
             </div>
 
             {filteredClasses.length > 0 ? (
-              <>{filteredClasses.map((objClass) => (
-                <CustomCard
-                  status="default"
-                  style={{ marginBottom: "16px" }}
-                  onClick={() => goToReinforcement(objClass.id)}
-                  key={objClass.id}
-                >
-                  <CustomCard.Header
-                    icon={<SolutionOutlined />}
-                    title={objClass.name}
-                  />
-                  <CustomCard.Description>
-                    {`Consulta y mejora tu progreso en ${objClass.name} empleando recursos interactivos.`}
-                  </CustomCard.Description>
-                  <CustomCard.Body>
-                    <div style={{ marginBottom: "2px" }}>
-                      Inicio: {dayjs(objClass.dateBegin).format("DD/MM/YYYY")}
-                    </div>
-                    <div>
-                      Fin: {dayjs(objClass.dateEnd).format("DD/MM/YYYY")}
-                    </div>
-                  </CustomCard.Body>
-                </CustomCard>
-              ))}</>
+              <>
+                {filteredClasses.map((objClass) => (
+                  <CustomCard
+                    status="default"
+                    style={{ marginBottom: "16px" }}
+                    onClick={() => goToReinforcement(objClass.id)}
+                    key={objClass.id}
+                  >
+                    <CustomCard.Header
+                      icon={<SolutionOutlined />}
+                      title={objClass.name}
+                    />
+                    <CustomCard.Description>
+                      {`Consulta y mejora tu progreso en ${objClass.name} empleando recursos interactivos.`}
+                    </CustomCard.Description>
+                    <CustomCard.Body>
+                      <div style={{ marginBottom: "2px" }}>
+                        Inicio: {dayjs(objClass.dateBegin).format("DD/MM/YYYY")}
+                      </div>
+                      <div>
+                        Fin: {dayjs(objClass.dateEnd).format("DD/MM/YYYY")}
+                      </div>
+                    </CustomCard.Body>
+                  </CustomCard>
+                ))}
+              </>
             ) : (
-              <Empty description="Todavía no te encuentras inscrito en ninguna clase." />
+              <Empty description="Todavía no te encuentras inscrito en ningun período." />
             )}
           </div>
         </PageTemplate>

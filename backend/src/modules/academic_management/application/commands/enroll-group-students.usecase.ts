@@ -22,7 +22,7 @@ export class EnrollGroupStudentUseCase {
         const ojbClass = await this.classesRepo.findById(input.classId);
         if (!ojbClass) {
             this.logger.error(`Class not found with ID ${input.classId}`);
-            throw new NotFoundError(`No se ha podido recupear la información de la clase`);
+            throw new NotFoundError(`No se ha podido recupear la información del período académico`);
         }
 
         let totalRows = input.studentRows.length, errorRows = 0, existingRows = 0, successRows = 0

@@ -27,7 +27,7 @@ const useClasses = () => {
     }
     return {
       state: success ? "success" : "error",
-      message: success ? "Clase recuperada exitosamente" : res?.error
+      message: success ? "Período recuperado exitosamente" : res?.error
     }
   }
 
@@ -39,7 +39,7 @@ const useClasses = () => {
     }
     return {
       state: success ? "success" : "error",
-      message: success ? "Clases recuperadas exitosamente" : res?.error
+      message: success ? "Períodos recuperados exitosamente" : res?.error
     }
   }
 
@@ -83,7 +83,7 @@ const useClasses = () => {
     }
     return {
       state: success ? "success" : "error",
-      message: success ? "Clase actualizada exitosamente" : res?.error
+      message: success ? "Período actualizado exitosamente" : res?.error
     }
   }
 
@@ -101,7 +101,7 @@ const useClasses = () => {
       setActualClass(res.data)
       return {
         state: "success",
-        message: "Clase eliminada exitosamente"
+        message: "Período eliminado exitosamente"
       }
     } else {
       const state = res?.code == 409 ? "info" : "error"
