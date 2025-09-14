@@ -59,9 +59,9 @@ export function ClassMenu() {
     <>
       {user?.roles.includes("estudiante") ? (
         <PageTemplate
-          title="Períodos Académicos"
-          subtitle="Consulta a detalle información acerca de los períodos académicos en las que te encuentras inscrito"
-          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Períodos" }]}
+          title="Clases"
+          subtitle="Consulta a detalle información acerca de las clases en las que te inscribiste"
+          breadcrumbs={[{ label: "Home", href: "/" }, { label: "Clases" }]}
         >
           <div
             className="w-full lg:max-w-6xl lg:mx-auto space-y-4 sm:space-y-6"

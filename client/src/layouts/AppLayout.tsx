@@ -59,7 +59,7 @@ function buildNavItems(roles: string[] | undefined): NavItem[] {
     {
       key: "/classes",
       icon: <BookOutlined />,
-      label: <Link to="/classes">Períodos Académicos</Link>,
+      label: <Link to="/classes">Clases</Link>,
     },
   ];
 
