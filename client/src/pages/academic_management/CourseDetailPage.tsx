@@ -5,7 +5,6 @@ import {
   EditOutlined,
   DeleteOutlined,
   FileTextOutlined,
-  InboxOutlined,
   UserOutlined,
   FolderOutlined,
   BookOutlined,
@@ -718,35 +717,6 @@ export function CourseDetailPage() {
               </div>
             </TabPane>
 
-            <TabPane
-              tab={
-                <span
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    padding: "0 4px",
-                  }}
-                >
-                  <InboxOutlined
-                    style={{ marginRight: "6px", fontSize: "14px" }}
-                  />
-                  <span>Materiales</span>
-                </span>
-              }
-              key="materials"
-            >
-              <div style={{ textAlign: "center", padding: "64px" }}>
-                <Empty description="Funcionalidad de materiales en desarrollo">
-                  <Button
-                    type="primary"
-                    onClick={() => navigate(`/curso/${id}/documents`)}
-                    style={{ marginTop: "16px" }}
-                  >
-                    Ir a Documentos
-                  </Button>
-                </Empty>
-              </div>
-            </TabPane>
 
             <TabPane
               tab={

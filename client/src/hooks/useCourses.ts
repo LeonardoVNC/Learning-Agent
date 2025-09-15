@@ -80,7 +80,7 @@ const useCourses = () => {
         }
         return {
             state: success ? "success" : "error",
-            message: success ? "Materia creada correctamente" : res?.error
+            message: success ? "Materia registrada exitosamente" : res?.error
         }
     }
 
