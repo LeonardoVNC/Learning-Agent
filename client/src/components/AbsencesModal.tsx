@@ -18,7 +18,6 @@ function AbsencesModal({
   open,
   onClose,
   student,
-  absences = [],
   loading = false,
 }: AbsencesModalProps) {
   const columns = [
@@ -29,7 +28,9 @@ function AbsencesModal({
     },
   ];
 
-  return (
+  //const absences;;
+
+  /*return (
     <Modal
       open={open}
       onCancel={onClose}
@@ -54,6 +55,21 @@ function AbsencesModal({
         <Empty description="No hay ausencias registradas" />
       )}
     </Modal>
+  );*/
+
+  return (
+    <Modal
+      open={open}
+      onCancel={onClose}
+      onOk={onClose}
+      title={`${
+        student
+          ? "Ausencias de " + student.name + " " + student.lastname
+          : "Estudiante no seleccionado"
+      }`}
+      footer={null}
+      width={600}
+    ></Modal>
   );
 }
 

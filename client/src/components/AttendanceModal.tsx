@@ -175,7 +175,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
         scroll={{ x: "max-content" }}
       />
 
-      {/* Modal de confirmación - Inspirado en el Componente safetyModal */}
+      {/* Modal de confirmación */}
       <Modal
         title={
           <div style={{ display: "flex", alignItems: "center" }}>

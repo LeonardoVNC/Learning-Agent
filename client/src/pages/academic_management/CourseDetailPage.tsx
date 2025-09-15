@@ -36,6 +36,7 @@ import type { StudentInfo } from "../../interfaces/studentInterface";
 import CourseExamsPanel from "../courses/CourseExamsPanel";
 import AttendanceModal from "../../components/AttendanceModal";
 import AbsencesModal from "../../components/AbsencesModal";
+import useAttendance from "../../hooks/useAttendance";
 
 const { Text } = Typography;
 const { TabPane } = Tabs;
@@ -56,6 +57,9 @@ export function CourseDetailPage() {
   } = useEnrollment();
   const { actualCourse, getCourseByID } = useCourses();
   const { teacherInfo, fetchTeacherInfoById } = useTeacher();
+
+  const { fetchAbsencesByClass } = useAttendance();
+  const [absencesData, setAbsencesData] = useState<Record<string, number>>({});
 
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [safetyModalOpen, setSafetyModalOpen] = useState(false);
@@ -87,7 +91,6 @@ export function CourseDetailPage() {
   const [selectedStudent, setSelectedStudent] = useState<
     StudentInfo | undefined
   >(undefined);
-  const [studentAbsences, setStudentAbsences] = useState<any[]>([]);
   const [loadingAbsences, setLoadingAbsences] = useState(false);
 
   const fetchPeriod = async () => {
@@ -156,6 +159,21 @@ export function CourseDetailPage() {
   useEffect(() => {
     fetchStudents();
   }, [fetchStudents]);
+
+  useEffect(() => {
+    const loadAbsences = async () => {
+      if (!id) return;
+      const res = await fetchAbsencesByClass(id);
+      if (res.state === "success" && Array.isArray(res.data)) {
+        const mapped: Record<string, number> = {};
+        res.data.forEach((s: any) => {
+          mapped[s.codigo] = s.totalAbsences;
+        });
+        setAbsencesData(mapped);
+      }
+    };
+    loadAbsences();
+  }, [id, fetchAbsencesByClass]);
 
   const handleEditClass = async (values: Clase) => {
     const data = await updateClass(values);
@@ -307,6 +325,10 @@ export function CourseDetailPage() {
     setSafetyModalOpen(false);
   };
 
+  const goToExams = () => {
+    navigate(`/exams`);
+  };
+
   const studentsColumns = [
     {
       title: "Código",
@@ -331,15 +353,13 @@ export function CourseDetailPage() {
       render: (_: any, record: StudentInfo) => (
         <Button
           type="link"
-          onClick={async () => {
+          onClick={() => {
             setSelectedStudent(record);
             setAbsencesModalOpen(true);
             setLoadingAbsences(true);
-            //TODO: Conectar con el backend para traer las ausencias
-            //const absences = await fetchAbsencesByStudent(record.userId);
           }}
         >
-          {0}
+          {absencesData[record.code] ?? "No data"}
         </Button>
       ),
     },
@@ -874,7 +894,6 @@ export function CourseDetailPage() {
           open={absencesModalOpen}
           onClose={() => setAbsencesModalOpen(false)}
           student={selectedStudent}
-          absences={studentAbsences}
           loading={loadingAbsences}
         />
       </div>

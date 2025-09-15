@@ -13,4 +13,16 @@ export const attendanceService = {
         }
     },
     
+    //Endpoints GET
+     async getAbsencesByClass(classId: string, teacherId: string) {
+    try {
+      const response = await apiClient.get(`/academic/absences/class/${classId}`, {
+        params: { teacherId },
+      });
+       return response.data;
+    } catch (error) {
+      console.error("Failed to fetch absences", error);
+      throw error;
+    }
+  },
 }
