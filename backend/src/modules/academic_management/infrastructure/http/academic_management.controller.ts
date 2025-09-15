@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards, Put } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards, Put, Query } from '@nestjs/common';
 import { CreateClassUseCase } from '../../application/commands/create-class.usecase';
 import { CreateClassDto } from './dtos/create-classes.dto';
 import { ListClassesUseCase } from '../../application/queries/list-classes.usecase';
@@ -21,10 +21,15 @@ import { CreateCourseUseCase } from '../../application/commands/create-course.us
 import { CreateCourseDTO } from './dtos/create-course.dto';
 import { GetCoursesByTeacherUseCase } from '../../application/queries/get-courses-by-teacher.usecase';
 import { GetClassesByCourseUseCase } from '../../application/queries/get-classes-by-course.usecase';
+import { getDateAbsencesBystudentUseCase } from '../../application/queries/get-date-absences-by-student.usecase.ts';
 import { responseAlreadyCreated, responseConflict, responseCreated, responseForbidden, responseInternalServerError, responseNotFound, responseSuccess } from 'src/shared/handler/http.handler';
 import { AlreadyCreatedError, ForbiddenError, NotFoundError,ConflictError } from 'src/shared/handler/errors';
 import { GetCourseByIdUseCase } from '../../application/queries/get-course-by-id.usecase';
 import { SoftDeleteSingleEnrollmentUseCase } from '../../application/commands/soft-delete-single-enrollment.useCase';
+import { AttendenceGroupStudentDTO } from './dtos/attendence-group-student.dto';
+import { SaveAttendanceGroupStudentUseCase } from '../../application/commands/save-attendance-group-student-usecase';
+import { absencesByClassDTO } from './dtos/absences-by-class.dto';
+import { GetAbsencesByClass } from '../../application/queries/get-absences-by-class';
 const academicRoute = 'academic'
 
 @UseGuards(JwtAuthGuard)
@@ -47,6 +52,9 @@ export class AcademicManagementController {
     private readonly updateClass: UpdateClassUseCase,
     private readonly softDeleteClass: SoftDeleteClassUseCase,
     private readonly softDeleteStudent: SoftDeleteSingleEnrollmentUseCase,
+    private readonly saveAttendanceGroupStudent: SaveAttendanceGroupStudentUseCase,
+    private readonly getAbsencesByClass: GetAbsencesByClass,
+    private readonly getDateAbsencesBystudentUseCase: getDateAbsencesBystudentUseCase,    
   ) { }
 
   //Endpoints GET
@@ -181,8 +189,57 @@ export class AcademicManagementController {
       }
     }
   }
+  @Get('/absences/classes/:classId')
+  async getStudentAbsencesByClassId(
+    @Param('classId') id: string,
+    @Query('teacherId') teacherId: string
+  ) {
+    const path = academicRoute + `/absences/class/${id}`
+    const description = "Get all student absences for a class"
+    try {
+      const input = {
+        classId: id,
+        teacherId: teacherId,
+      }
+      const absences = await this.getAbsencesByClass.execute(input);
+      return responseSuccess("Sin implementar", absences, description, path)
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return responseNotFound(error.message,"Sin implementar",description,path);
+      } else if (error instanceof ForbiddenError) {
+        return responseForbidden(error.message,"Sin implementar",description,path);
+      } else {
+        return responseInternalServerError(error.message,"Sin implementar",description,path);
+      }
+    }
+  }  
 
-
+  @Get('/students/:studentId/absences/dates')
+  async getStudentAbsencesByDate(
+    @Param('studentId') id: string,
+    @Query('teacherId') teacherId: string,
+    @Query('classId') classId: string
+  ) {
+    const path = academicRoute + `/students/${id}/absences/dates`
+    const description = "Retrieve all absence dates of a student for a specific class"
+    try {
+      const input = {
+        studentId: id,
+        teacherId: teacherId,
+        classId: classId,
+      }
+      const absencesDate = await this.getDateAbsencesBystudentUseCase.execute(input);
+      return responseSuccess("Sin implementar", absencesDate, description, path)
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return responseNotFound(error.message,"Sin implementar",description,path);
+      } else if (error instanceof ForbiddenError) {
+        return responseForbidden(error.message,"Sin implementar",description,path);
+      } else {
+        return responseInternalServerError(error.message,"Sin implementar",description,path);
+      }
+    }
+  }
   //Endpoints POST
   @Post('course')
   async createCourseEndpoint(@Body() dto: CreateCourseDTO) {
@@ -251,7 +308,32 @@ export class AcademicManagementController {
       }
     }
   }
-
+  
+  @Post('attendance/:classId')
+  //classId:string ,teacherId:string, date:Date, studentRows: AttendenceGroupStudentRow[] 
+  async AttendeceGroupStudentsEndpoint(@Param('classId') classId: string,@Body() dto: AttendenceGroupStudentDTO) {
+    const path = academicRoute + `attendances/${classId}`
+    const description = `Registro de asistencias para la clase ${classId} por el docente ${dto.teacherId} en la fecha ${dto.date.toISOString().split('T')[0]}`;
+    try {
+      const attendanceData = await this.saveAttendanceGroupStudent.execute({
+        classId,
+        teacherId: dto.teacherId,
+        date: dto.date,
+        studentRows: dto.studentRows,
+      })
+      return responseCreated("Sin implementar", attendanceData, description, path)
+    } catch (error) {
+      if (error instanceof NotFoundError) {
+        return responseNotFound(error.message, "Sin implementar", description, path)
+      }else if (error instanceof ForbiddenError) {
+        return responseForbidden(error.message, "Sin implementar", description, path)
+      }else if (error instanceof ConflictError) {
+        return responseConflict(error.message, "Sin implementar", description, path)
+      } else {
+        return responseInternalServerError(error.message, "Sin implementar", description, path)
+      }
+    }
+  }
 
   //Endpoints PUT
   @Put('classes/:id')
