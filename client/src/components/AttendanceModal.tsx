@@ -5,7 +5,10 @@ import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 
 import type { StudentInfo } from "../interfaces/studentInterface";
-import type { AttendanceRow, CreateAttendanceInterface } from "../interfaces/attendanceInterface";
+import type {
+  AttendanceRow,
+  CreateAttendanceInterface,
+} from "../interfaces/attendanceInterface";
 import useAttendance from "../hooks/useAttendance";
 
 interface AttendanceModalProps {
@@ -21,28 +24,28 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
   students = [],
   classId,
 }) => {
-  const [studentMap, setStudentMap] = useState<Map<string, boolean>>(new Map())
+  const [studentMap, setStudentMap] = useState<Map<string, boolean>>(new Map());
   const [attendanceData, setAttendanceData] = useState<AttendanceRow[]>([]);
   const [absentData, setAbsentData] = useState<AttendanceRow[]>([]);
-  const [showConfirmModal, setShowConfirmModal] = useState(false)
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const { saveAttendanceList } = useAttendance();
 
   const prepareData = useCallback(() => {
     const dataMap: Map<string, boolean> = new Map();
     students.map((student: StudentInfo) => {
-      dataMap.set(student.userId, false)
-    })
+      dataMap.set(student.userId, false);
+    });
 
-    setStudentMap(dataMap)
-  }, [students])
+    setStudentMap(dataMap);
+  }, [students]);
 
   useEffect(() => {
     prepareData();
-  }, [students])
+  }, [students]);
 
   const resetStudentMap = () => {
     const newMap = new Map<string, boolean>();
-    students.forEach(student => {
+    students.forEach((student) => {
       newMap.set(student.userId, false);
     });
     setStudentMap(newMap);
@@ -50,7 +53,7 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
 
   const studentInfoMap = useMemo(() => {
     const map = new Map<string, StudentInfo>();
-    students.forEach(student => {
+    students.forEach((student) => {
       map.set(student.userId, student);
     });
     return map;
@@ -63,15 +66,16 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
       key: "code",
     },
     {
-      title: "Nombres",
-      dataIndex: "name",
-      key: "name",
-    },
-    {
       title: "Apellidos",
       dataIndex: "lastname",
       key: "lastname",
     },
+    {
+      title: "Nombres",
+      dataIndex: "name",
+      key: "name",
+    },
+
     {
       title: "Asistencia",
       key: "attendance",
@@ -93,53 +97,59 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
       ([studentId, isPresent]) => ({
         studentId,
         isPresent,
-      }));
+      })
+    );
 
     setAttendanceData(attendanceRows);
 
-    const absences = attendanceRows.filter((a) => !a.isPresent)
-    setAbsentData(absences)
+    const absences = attendanceRows.filter((a) => !a.isPresent);
+    setAbsentData(absences);
 
-    setShowConfirmModal(true)
-  }
+    setShowConfirmModal(true);
+  };
 
   const handleCancel = () => {
-    resetStudentMap()
+    resetStudentMap();
     onClose();
-  }
+  };
 
   const handleConfirmation = async () => {
-    setShowConfirmModal(false)
+    setShowConfirmModal(false);
 
     const attendanceInfo: Omit<CreateAttendanceInterface, "teacherId"> = {
       classId,
-      date: dayjs().startOf('day').toDate(),
-      studentRows: attendanceData
-    }
+      date: dayjs().startOf("day").toDate(),
+      studentRows: attendanceData,
+    };
 
-    const res = await saveAttendanceList(attendanceInfo)
+    const res = await saveAttendanceList(attendanceInfo);
     if (res?.state === "success") {
-      message.success(res.message)
-    } else if (res?.state === "error"){
-      message.error(res.message)
+      message.success(res.message);
+    } else if (res?.state === "error") {
+      message.error(res.message);
     } else if (res?.state === "info") {
-      message.info(res.message)
+      message.info(res.message);
     }
     resetStudentMap();
     onClose();
-  }
+  };
 
   const handleConfirmationCancel = () => {
-    setShowConfirmModal(false)
-  }
+    setShowConfirmModal(false);
+  };
 
   return (
     <Modal
       title={
-        <div style={{ display: 'flex', alignItems: 'center', fontSize: '16px', marginBottom: '16px' }}>
-          <CalendarOutlined
-            style={{ marginRight: '8px', fontSize: '20px' }}
-          />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            fontSize: "16px",
+            marginBottom: "16px",
+          }}
+        >
+          <CalendarOutlined style={{ marginRight: "8px", fontSize: "20px" }} />
           {`Tomar asistencia - ${dayjs().format("DD/MM/YYYY")}`}
         </div>
       }
@@ -147,30 +157,30 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
       onCancel={handleCancel}
       maskClosable={false}
       footer={[
-        <Button key="cancel" danger onClick={handleCancel}>
+        <Button key="cancel" danger type="primary" onClick={handleCancel}>
           Cancelar
         </Button>,
         <Button type="primary" onClick={handleSubmit}>
           Guardar
-        </Button>
+        </Button>,
       ]}
-      width={window.innerWidth < 600 ? '90%' : '70%'}
-      style={{ maxWidth: '90vw' }}
+      width={window.innerWidth < 600 ? "90%" : "70%"}
+      style={{ maxWidth: "90vw" }}
     >
       <Table
         columns={columns}
         dataSource={students}
         rowKey={(record) => record.code}
         pagination={false}
-        scroll={{ x: 'max-content' }}
+        scroll={{ x: "max-content" }}
       />
 
       {/* Modal de confirmación - Inspirado en el Componente safetyModal */}
       <Modal
         title={
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div style={{ display: "flex", alignItems: "center" }}>
             <CheckCircleOutlined
-              style={{ marginRight: '8px', fontSize: '20px', color: '#52c41a' }}
+              style={{ marginRight: "8px", fontSize: "20px", color: "#52c41a" }}
             />
             Confirmar asistencia
           </div>
@@ -178,56 +188,80 @@ const AttendanceModal: React.FC<AttendanceModalProps> = ({
         open={showConfirmModal}
         onCancel={handleConfirmationCancel}
         footer={[
-          <Button key="cancel" danger onClick={handleConfirmationCancel}>
+          <Button
+            key="cancel"
+            danger
+            type="primary"
+            onClick={handleConfirmationCancel}
+          >
             Cancelar
           </Button>,
           <Button type="primary" onClick={handleConfirmation}>
             Guardar asistencia
-          </Button>
+          </Button>,
         ]}
-        width={'35%'}
+        width={"35%"}
       >
-        <div style={{ textAlign: 'center' }}>
-          <div style={{
-            fontSize: '48px',
-            marginBottom: '16px',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}>
-            <CalendarOutlined style={{ fontSize: '48px' }} />
+        <div style={{ textAlign: "center" }}>
+          <div
+            style={{
+              fontSize: "48px",
+              marginBottom: "16px",
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            <CalendarOutlined style={{ fontSize: "48px" }} />
           </div>
 
-          <p style={{
-            marginBottom: '16px',
-            fontSize: '16px',
-            lineHeight: '1.5'
-          }}>
+          <p
+            style={{
+              marginBottom: "16px",
+              fontSize: "16px",
+              lineHeight: "1.5",
+            }}
+          >
             Confirme la información antes de guardarla:
           </p>
 
-          <div style={{
-            backgroundColor: '#fff2e8',
-            border: '1px solid #ffcc7a',
-            borderRadius: '8px',
-            padding: '16px',
-            marginTop: '16px',
-            textAlign: 'left'
-          }}>
+          <div
+            style={{
+              backgroundColor: "#fff2e8",
+              border: "1px solid #ffcc7a",
+              borderRadius: "8px",
+              padding: "16px",
+              marginTop: "16px",
+              textAlign: "left",
+            }}
+          >
             {absentData && absentData?.length > 0 ? (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                <div style={{ color: '#d46b08' }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "4px",
+                }}
+              >
+                <div style={{ color: "#d46b08" }}>
                   Los siguientes estudiantes se encuentran Ausentes:
                   {absentData.map((a) => (
                     <div key={a.studentId}>
-                      - {studentInfoMap.get(a.studentId)?.name} {studentInfoMap.get(a.studentId)?.lastname}
+                      - {studentInfoMap.get(a.studentId)?.name}{" "}
+                      {studentInfoMap.get(a.studentId)?.lastname}
                     </div>
                   ))}
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', marginBottom: '4px' }}>
-                <div style={{ color: '#d46b08' }}>
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  marginBottom: "4px",
+                }}
+              >
+                <div style={{ color: "#d46b08" }}>
                   Todos los estudiantes asistieron
                 </div>
               </div>

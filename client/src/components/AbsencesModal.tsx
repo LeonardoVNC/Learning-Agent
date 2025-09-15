@@ -26,7 +26,7 @@ function AbsencesModal({
       title: "Fechas de ausencia",
       dataIndex: "date",
       key: "date",
-    }
+    },
   ];
 
   return (
@@ -34,8 +34,10 @@ function AbsencesModal({
       open={open}
       onCancel={onClose}
       onOk={onClose}
-      title={`Ausencias de ${
-        student ? student.name + " " + student.lastname : ""
+      title={`${
+        student
+          ? "Ausencias de " + student.name + " " + student.lastname
+          : "Estudiante no seleccionado"
       }`}
       footer={null}
       width={600}
