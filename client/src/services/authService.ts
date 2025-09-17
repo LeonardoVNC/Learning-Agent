@@ -25,6 +25,7 @@ export const login = async (payload: LoginPayload) => {
       "/auth/login",
       payload
     );
+    console.log(response.data);
     saveAuth(response.data, { remember: !!payload.remember });
     try {
       const me = await meAPI(response.data.accessToken);

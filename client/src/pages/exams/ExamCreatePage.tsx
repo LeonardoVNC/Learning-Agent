@@ -61,6 +61,7 @@ export default function ExamsCreatePage() {
   const { toasts, pushToast, removeToast } = useToast();
   const formRef = useRef<ExamFormHandle>(null!);
   const [params] = useSearchParams();
+  const classId = params.get('classId') || '';
   const courseId = params.get('courseId') || '';
   const navigate = useNavigate();
   
@@ -77,14 +78,14 @@ export default function ExamsCreatePage() {
   // Breadcrumbs dinámicos basados en si viene de un curso específico
   const breadcrumbs = courseId 
     ? [
-        { label: 'Home', href: '/' },
+        { label: 'Inicio', href: '/' },
         { label: 'Materias', href: '/professor/courses' },
         { label: actualCourse?.name || 'Curso', href: `/professor/courses/${courseId}/periods` },
         { label: 'Exámenes', href: `/professor/courses/${courseId}/exams` },
         { label: 'Crear examen' },
       ]
     : [
-        { label: 'Home', href: '/' },
+        { label: 'Inicio', href: '/' },
         { label: 'Materias', href: '/professor/courses' },
         { label: 'Crear examen' },
       ];
@@ -229,7 +230,7 @@ export default function ExamsCreatePage() {
   };
 
   const onSave = async () => {
-    if (!courseId) {
+    if (!classId) {
       pushToast('Abre el creador desde la materia (Crear examen) para asociarlo.', 'error');
       return;
     }
@@ -256,13 +257,13 @@ export default function ExamsCreatePage() {
     });
 
     await createExamApproved({
-      courseId,
+      classId,
       title: aiMeta.subject || 'Examen',
       questions,
     });
 
     pushToast('Examen guardado en la base de datos.', 'success');
-    navigate(`/courses/${courseId}`);
+    navigate(courseId ? `/courses/${courseId}/periods/${classId}` : `/courses/${classId}`);
   };
 
   return (

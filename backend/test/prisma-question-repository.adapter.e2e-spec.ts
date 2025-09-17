@@ -62,7 +62,9 @@ describe('PrismaQuestionRepositoryAdapter - prisma mocked', () => {
     const found = await repo.findBySignature('sig-xx');
     expect(found).not.toBeNull();
     expect(found?.signature).toBe('sig-xx');
-    expect(mockPrisma.generatedQuestion.findUnique).toHaveBeenCalledWith({ where: { signature: 'sig-xx' } });
+    expect(mockPrisma.generatedQuestion.findUnique).toHaveBeenCalledWith({
+      where: { signature: 'sig-xx' },
+    });
   });
 
   it('incrementUsage should call prisma.update with increments', async () => {
@@ -79,7 +81,10 @@ describe('PrismaQuestionRepositoryAdapter - prisma mocked', () => {
   });
 
   it('pruneToLimitByExam should delete returned ids', async () => {
-    mockPrisma.generatedQuestion.findMany.mockResolvedValue([{ id: 'a' }, { id: 'b' }]);
+    mockPrisma.generatedQuestion.findMany.mockResolvedValue([
+      { id: 'a' },
+      { id: 'b' },
+    ]);
     mockPrisma.generatedQuestion.deleteMany.mockResolvedValue({ count: 2 });
     await repo.pruneToLimitByExam('exam1', 1);
     expect(mockPrisma.generatedQuestion.findMany).toHaveBeenCalledWith({
@@ -88,14 +93,18 @@ describe('PrismaQuestionRepositoryAdapter - prisma mocked', () => {
       skip: 1,
       select: { id: true },
     });
-    expect(mockPrisma.generatedQuestion.deleteMany).toHaveBeenCalledWith({ where: { id: { in: ['a', 'b'] } } });
+    expect(mockPrisma.generatedQuestion.deleteMany).toHaveBeenCalledWith({
+      where: { id: { in: ['a', 'b'] } },
+    });
   });
 
   it('countByExam should return prisma.count result', async () => {
     mockPrisma.generatedQuestion.count.mockResolvedValue(5);
     const c = await repo.countByExam('examX');
     expect(c).toBe(5);
-    expect(mockPrisma.generatedQuestion.count).toHaveBeenCalledWith({ where: { examId: 'examX' } });
+    expect(mockPrisma.generatedQuestion.count).toHaveBeenCalledWith({
+      where: { examId: 'examX' },
+    });
   });
 
   it('deleteOlderThan should call prisma.deleteMany and return count', async () => {
@@ -153,27 +162,34 @@ describe('PrismaQuestionRepositoryAdapter - in-memory behavior', () => {
   });
 
   it('pruneToLimitByExam should keep only limit items per exam', async () => {
-    const a1 = Question.create('q1'); a1.examId = 'EX1';
-    const a2 = Question.create('q2'); a2.examId = 'EX1';
-    const a3 = Question.create('q3'); a3.examId = 'EX1';
+    const a1 = Question.create('q1');
+    a1.examId = 'EX1';
+    const a2 = Question.create('q2');
+    a2.examId = 'EX1';
+    const a3 = Question.create('q3');
+    a3.examId = 'EX1';
     await repo.save(a1);
-    await new Promise(r => setTimeout(r, 1));
+    await new Promise((r) => setTimeout(r, 1));
     await repo.save(a2);
-    await new Promise(r => setTimeout(r, 1));
+    await new Promise((r) => setTimeout(r, 1));
     await repo.save(a3);
     await repo.pruneToLimitByExam('EX1', 2);
-    const remaining = (await repo.findAll()).filter(x => x.examId === 'EX1');
+    const remaining = (await repo.findAll()).filter((x) => x.examId === 'EX1');
     expect(remaining.length).toBeLessThanOrEqual(2);
   });
 
   it('deleteOlderThan should remove items older than date', async () => {
-    const old = Question.rehydrate({ ...Question.create('old').toJSON(), createdAt: new Date('2000-01-01'), id: 'old-id' });
+    const old = Question.rehydrate({
+      ...Question.create('old').toJSON(),
+      createdAt: new Date('2000-01-01'),
+      id: 'old-id',
+    });
     const recent = Question.create('new');
     await repo.save(old);
     await repo.save(recent);
     const removed = await repo.deleteOlderThan(new Date('2010-01-01'));
     expect(removed).toBeGreaterThanOrEqual(1);
     const all = await repo.findAll();
-    expect(all.find(a => a.id === 'old-id')).toBeUndefined();
+    expect(all.find((a) => a.id === 'old-id')).toBeUndefined();
   });
 });

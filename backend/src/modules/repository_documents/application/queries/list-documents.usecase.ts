@@ -1,8 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type { DocumentStoragePort } from '../../domain/ports/document-storage.port';
 import type { DocumentRepositoryPort } from '../../domain/ports/document-repository.port';
-import { DocumentListResponse } from '../../domain/value-objects/upload-document.vo';
-import { DocumentListItem } from '../../domain/entities/document-list-item';
+import { DocumentListResponse, DocumentListItem } from '../../domain/value-objects/upload-document.vo';
 
 @Injectable()
 export class ListDocumentsUseCase {
@@ -13,12 +12,15 @@ export class ListDocumentsUseCase {
 
   /**
    * Ejecuta el caso de uso para listar documentos
+   * @param filters - Filtros opcionales para course y class
    * @returns Lista de documentos disponibles, excluyendo los eliminados
    */
-  async execute(): Promise<DocumentListResponse> {
+  async execute(filters?: { courseId?: string; classId?: string }): Promise<DocumentListResponse> {
     try {
-      // Obtener documentos de la base de datos
-      const dbDocuments = await this.documentRepository.findAll();
+      // Obtener documentos de la base de datos con filtros
+      const dbDocuments = filters?.courseId || filters?.classId 
+        ? await this.documentRepository.findWithFilters(filters)
+        : await this.documentRepository.findAll();
 
       // Crear DocumentListItem con datos correctos
       const documents: DocumentListItem[] = [];
@@ -45,6 +47,8 @@ export class ListDocumentsUseCase {
               doc.size,
               downloadUrl,
               doc.uploadedAt,
+              doc.courseId,
+              doc.classId,
             ),
           );
         } catch (error) {

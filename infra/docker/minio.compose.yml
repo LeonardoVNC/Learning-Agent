@@ -40,3 +40,13 @@ services:
       echo 'Bucket created and configured successfully!';
       "
     restart: "no"
+    networks:
+      - minio-network
+
+volumes:
+  minio-data:
+
+networks:
+  minio-network:
+    driver: bridge
+    name: learning-agent-network

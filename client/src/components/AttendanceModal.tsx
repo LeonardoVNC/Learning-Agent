@@ -4,8 +4,8 @@ import { CalendarOutlined, CheckCircleOutlined } from "@ant-design/icons";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 
-import type { StudentInfo } from "../interfaces/studentInterface";
 import type { AttendanceRow, CreateAttendanceInterface } from "../interfaces/attendanceInterface";
+import type { StudentInfo } from "../interfaces/studentInterface";
 import useAttendance from "../hooks/useAttendance";
 
 interface AttendanceModalProps {

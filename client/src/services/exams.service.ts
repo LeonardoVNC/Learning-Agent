@@ -84,30 +84,25 @@ function buildQuestionsDto(input: Record<string, unknown> = {}) {
     throw new Error('La distribución debe contener al menos 1 pregunta en total.');
   }
 
-  const reference = 
-  input.reference != null ? String(input.reference) : undefined;
+  const reference =
+    input.reference != null ? String(input.reference) : undefined;
 
-  const instruction = [
-    'RESPONDE EXCLUSIVAMENTE EN ESPAÑOL NEUTRO (es).',
-    'Genera preguntas claras, concisas y SIN texto en inglés.',
-    'Respeta EXACTAMENTE la distribución por tipo indicada.',
-    `Tema/Materia: ${subject}`,
-    reference ? `Contexto: ${reference}` : '',
-  ]
-    .filter(Boolean)
-    .join('\n');
+  const examId = (input as any).examId ? String((input as any).examId) : undefined;
+  const classId = (input as any).classId ? String((input as any).classId) : undefined;
 
-  return {
+  const dto: any = {
     subject,
-    difficulty,
-    totalQuestions,
-    reference,
-    distribution,
-    language: 'es',
-    strict: true,
-    instruction,
+    difficulty,        
+    totalQuestions,   
+    reference,         
+    distribution,      
   };
+  if (examId) dto.examId = examId;
+  if (classId) dto.classId = classId;
+
+  return dto;
 }
+
 
 function looksSpanish(text: string): boolean {
   const t = (text || '').toLowerCase();
@@ -249,7 +244,7 @@ export async function generateQuestions(input: Record<string, unknown>): Promise
   const wanted = dto.distribution;
   const subject = dto.subject;
 
-  const res = await api.post('/exams/questions', dto);
+  const res = await api.post('/api/exams/questions', dto);
   const payload = (res as any)?.data;
 
   const grouped =
@@ -312,12 +307,25 @@ export async function createExam(payload: any): Promise<any> {
   if (USE_MOCK) {
     return { ok: true, data: { id: `exam_${Date.now()}`, ...payload } };
   }
-  const res = await api.post('/exams', payload);
+
+  const classId = payload?.classId ?? null;
+  if (!classId) {
+    if (payload?.courseId) {
+      throw new Error('Desde ahora debes enviar classId (la clase/período) en lugar de courseId.');
+    }
+    throw new Error('classId es obligatorio para crear el examen.');
+  }
+
+  const difficulty = toSpanishDifficulty(payload?.difficulty);
+  const body = { ...payload, classId, difficulty };
+
+  const res = await api.post('/api/exams', body);
   return (res as any)?.data ?? res;
 }
 
-export type CreateExamApprovedInput = {
-  courseId?: string;
+export type ExamInput = {
+  classId?: string;        
+  courseId?: string;       
   title: string;
   status?: 'Guardado' | 'Publicado';
   content?: {
@@ -339,57 +347,171 @@ export type CreateExamApprovedInput = {
   }>;
 };
 
-export async function createExamApproved(input: CreateExamApprovedInput) {
-  const body = input.content
-    ? {
-        title: input.title,
-        courseId: input.courseId,
-        status: input.status ?? 'Guardado',
-        content: input.content,
-      }
-    : {
-        title: input.title,
-        courseId: input.courseId,
-        status: input.status ?? 'Guardado',
-        content: {
-          subject: 'Tema general',
-          difficulty: 'medio',
-          createdAt: new Date().toISOString(),
-          questions: (input.questions ?? []).map((q) => ({
-            id: String(q.id),
-            type: q.type,
-            text: String(q.text ?? ''),
-            options: Array.isArray(q.options) ? q.options.map(String) : undefined,
-          })),
-        },
-      };
+export type CreateExamApprovedInput = ExamInput;
+export type UpdateExamApprovedInput = ExamInput & { examId: string };
 
-  const { data } = await api.post('/exams/approved', body);
-  return data?.data ?? data;
+export async function createExamApproved(input: CreateExamApprovedInput) {
+  const classId = input.classId ?? null;
+  if (!classId) {
+    if (input.courseId) {
+      throw new Error('Debes especificar classId (período/clase). Ya no se acepta courseId en este flujo.');
+    }
+    throw new Error('classId es obligatorio para crear el examen.');
+  }
+
+  const questions =
+    input.content?.questions ??
+    input.questions ??
+    [];
+
+  const createBody = {
+    title: input.title,
+    classId,
+    status: input.status ?? 'Guardado',
+    subject: input.content?.subject ?? 'Tema general',
+    difficulty: toSpanishDifficulty(input.content?.difficulty ?? 'medio'),
+    attempts: 1,
+    totalQuestions: Math.max(1, questions.length || 1),
+    timeMinutes: 45,
+  };
+
+  const createdExam = await createExam(createBody);
+  const examId =
+  createdExam?.id ??
+  createdExam?.data?.id ??
+  createdExam?.exam?.id ??
+  createdExam?.data?.exam?.id; 
+
+  if (!examId) {
+    throw new Error('No se pudo crear el examen (sin id).');
+  }
+
+  for (const q of questions) {
+    const kind =
+      q.type === 'multiple_choice' ? 'MULTIPLE_CHOICE'
+      : q.type === 'true_false' ? 'TRUE_FALSE'
+      : q.type === 'open_analysis' ? 'OPEN_ANALYSIS'
+      : 'OPEN_EXERCISE';
+
+    const dto: any = {
+      kind,
+      text: String(q.text ?? ''),
+      position: 'end',
+    };
+
+    if (q.type === 'multiple_choice') {
+      dto.options = Array.isArray(q.options) ? q.options.map(String) : ['Opción A','Opción B'];
+      dto.correctOptionIndex = 0;
+    }
+    if (q.type === 'true_false') {
+      dto.correctBoolean = true;
+    }
+    if (q.type === 'open_analysis' || q.type === 'open_exercise') {
+      dto.expectedAnswer = undefined;
+    }
+
+    await api.post(`/api/exams/${examId}/questions`, dto);
+  }
+
+  return createdExam?.data ?? createdExam;
 }
 
-export async function quickSaveExam(p: { title: string; questions: any[]; content?: any; courseId?: string; teacherId?: string }) {
-  const body = p.content
-    ? p
-    : {
-        title: p.title,
-        content: {
-          subject: 'Tema general',
-          difficulty: 'medio',
-          createdAt: new Date().toISOString(),
-          questions: (p.questions ?? []).map((q: any, i: number) => ({
-            id: String(q?.id ?? `q_${Date.now()}_${i}`),
-            type: String(q?.type),
-            text: String(q?.text ?? ''),
-            options: Array.isArray(q?.options) ? q.options.map(String) : undefined,
-          })),
-        },
-        ...(p.courseId ? { courseId: p.courseId } : {}),
-        ...(p.teacherId ? { teacherId: p.teacherId } : {}),
-      };
+export async function updateExamApprovedFull(input: UpdateExamApprovedInput) {
+  const { examId } = input;
+  
+  const questions = await api.get(`/api/exams/${examId}/questions`);
+  for (const question of questions.data) {
+    await api.delete(`/api/exams/${examId}/questions/${question.id}`);
+  }
 
-  const { data } = await api.post('/exams/quick-save', body);
-  return data?.data ?? data;
+  await api.put(`/api/exams/${examId}`, {
+    title: input.title,
+    subject: input.content?.subject ?? 'Tema general',
+    difficulty: toSpanishDifficulty(input.content?.difficulty ?? 'medio'),
+    attempts: 1,
+    totalQuestions: Math.max(1, (input.questions?.length || 1)),
+    timeMinutes: 45,
+  });
+
+  const newQuestions = input.content?.questions ?? input.questions ?? [];
+  for (const q of newQuestions) {
+    const kind =
+      q.type === 'multiple_choice' ? 'MULTIPLE_CHOICE'
+      : q.type === 'true_false' ? 'TRUE_FALSE'
+      : q.type === 'open_analysis' ? 'OPEN_ANALYSIS'
+      : 'OPEN_EXERCISE';
+
+    const dto: any = {
+      kind,
+      text: String(q.text ?? ''),
+      position: 'end',
+    };
+
+    if (q.type === 'multiple_choice') {
+      dto.options = Array.isArray(q.options) ? q.options.map(String) : ['Opción A','Opción B'];
+      dto.correctOptionIndex = 0;
+    }
+    if (q.type === 'true_false') {
+      dto.correctBoolean = true;
+    }
+    if (q.type === 'open_analysis' || q.type === 'open_exercise') {
+      dto.expectedAnswer = undefined;
+    }
+
+    await api.post(`/api/exams/${examId}/questions`, dto);
+  }
+
+  return { id: examId };
+}
+
+export async function quickSaveExam(p: { title: string; questions: any[]; content?: any; classId?: string; courseId?: string; teacherId?: string }) {
+  const classId = p.classId ?? null;
+  if (!classId) {
+    if (p.courseId) {
+      throw new Error('Debes especificar classId (período/clase). Ya no se acepta courseId en este flujo.');
+    }
+    throw new Error('classId es obligatorio para guardar el examen.');
+  }
+
+  const questions = (p.questions ?? []).map((q: any, i: number) => ({
+    id: String(q?.id ?? `q_${Date.now()}_${i}`),
+    type: String(q?.type),
+    text: String(q?.text ?? ''),
+    options: Array.isArray(q?.options) ? q.options.map(String) : undefined,
+  }));
+
+  const created = await createExam({
+    title: p.title,
+    classId,
+    status: 'Guardado',
+    subject: p.content?.subject ?? 'Tema general',
+    difficulty: toSpanishDifficulty(p.content?.difficulty ?? 'medio'),
+    attempts: 1,
+    totalQuestions: Math.max(1, questions.length || 1),
+    timeMinutes: 45,
+  });
+
+  const examId = created?.data?.id ?? created?.id;
+  if (!examId) throw new Error('No se pudo crear el examen (sin id).');
+
+  for (const q of questions) {
+    const kind =
+      q.type === 'multiple_choice' ? 'MULTIPLE_CHOICE'
+      : q.type === 'true_false' ? 'TRUE_FALSE'
+      : q.type === 'open_analysis' ? 'OPEN_ANALYSIS'
+      : 'OPEN_EXERCISE';
+
+    const dto: any = { kind, text: q.text, position: 'end' };
+    if (q.type === 'multiple_choice') {
+      dto.options = q.options ?? ['Opción A', 'Opción B'];
+      dto.correctOptionIndex = 0;
+    }
+    if (q.type === 'true_false') dto.correctBoolean = true;
+
+    await api.post(`/api/exams/${examId}/questions`, dto);
+  }
+
+  return created?.data ?? created;
 }
 
 export type CourseExamRow = {
@@ -400,114 +522,33 @@ export type CourseExamRow = {
   updatedAt?: string;
 };
 
-export async function updateExamApproved(
-  examId: string | number,
-  patch: Record<string, unknown>
-) {
-  const { data } = await api.patch(`/exams/approved/${examId}`, patch);
-  return data?.data ?? data;
-}
-
-export async function setExamVisibility(
-  examId: string | number,
-  next: 'visible' | 'hidden'
-) {
-  try {
-    return await updateExamApproved(examId, { visibility: next });
-  } catch (_) {
-    return await updateExamApproved(examId, { isVisible: next === 'visible' });
-  }
-}
-
-export async function listCourseExams(courseId: string): Promise<CourseExamRow[]> {
-  const { data } = await api.get(`/courses/${courseId}/exams`);
+export async function listClassExams(classId: string): Promise<CourseExamRow[]> {
+  const { data } = await api.get(`/api/classes/${classId}/exams`);
   const rows = data?.data ?? data ?? [];
   return Array.isArray(rows) ? rows : [];
 }
 
-async function exists(path: string) {
-  try {
-    const h = await api.head(path);
-    return h.status >= 200 && h.status < 300;
-  } catch (e: any) {
-    const st = e?.response?.status;
-    if (st === 405) {
-      try {
-        const g = await api.get(path);
-        return g.status >= 200 && g.status < 300;
-      } catch (ee: any) {
-        if (ee?.response?.status === 404) return false;
-        throw ee;
-      }
-    }
-    if (st === 404) return false;
-    throw e;
+export async function listCourseExams(courseId_as_classId: string): Promise<CourseExamRow[]> {
+  if (import.meta.env.MODE !== 'production') {
+    console.warn('[DEPRECATION] listCourseExams now expects a classId (period). Forwarding to listClassExams.');
   }
-}
-
-async function tryDelete(path: string) {
-  try {
-    const res = await api.delete(path);
-    return !res || (res.status >= 200 && res.status < 300);
-  } catch (err: any) {
-    if (err?.response?.status !== 404) throw err;
-    return false;
-  }
-}
-
-async function tryAllDeleteCombos(courseId: string, id: string) {
-  const bases = [
-    `/courses/${courseId}/exams/${id}`,
-    `/courses/${courseId}/approved-exams/${id}`,
-    `/exams/${id}`,
-    `/exams/approved/${id}`,
-    `/approved-exams/${id}`,
-  ];
-
-  for (const base of bases) {
-    const ok = await exists(base);
-    if (!ok) continue;
-
-    if (await tryDelete(base)) return true;
-    if (await tryDelete(`${base}/delete`)) return true;
-    if (await tryDelete(`${base}/soft-delete`)) return true;
-  }
-
-  return false;
-}
-
-export async function deleteExamByCandidates(courseId: string, candidates: Array<string | number>) {
-  const ids = Array.from(new Set((candidates || []).map((x) => String(x)).filter(Boolean)));
-
-  for (const id of ids) {
-    const ok = await tryAllDeleteCombos(courseId, id);
-    if (ok) return; 
-  }
-
-  const err = new Error(`No se encontró endpoint de borrado para ids: ${ids.join(', ')}`);
-  (err as any).response = { status: 404, data: { message: (err as any).message } };
-  throw err;
-}
-
-export async function deleteCourseExam(courseId: string, examId: string | number): Promise<void> {
-  await deleteExamByCandidates(courseId, [examId]);
+  return listClassExams(courseId_as_classId);
 }
 
 export async function deleteExamAny(examId: string | number): Promise<void> {
   const id = String(examId);
-  const bases = [`/exams/${id}`, `/exams/approved/${id}`, `/approved-exams/${id}`];
+  await api.delete(`/api/exams/${id}`);
+}
 
-  for (const b of bases) {
-    if (await exists(b)) {
-      if (await tryDelete(b)) return;
-      if (await tryDelete(`${b}/delete`)) return;
-      if (await tryDelete(`${b}/soft-delete`)) return;
-    }
+export async function deleteCourseExam(classId: string, examId: string | number): Promise<void> {
+  await deleteExamAny(examId);
+}
+
+export async function deleteExamByCandidates(classId: string, candidates: Array<string | number>) {
+  const ids = Array.from(new Set((candidates || []).map((x) => String(x)).filter(Boolean)));
+  for (const id of ids) {
+    await deleteExamAny(id);
   }
-
-  const err = new Error(`No se encontró endpoint de borrado para id: ${id}`);
-  (err as any).response = { status: 404, data: { message: (err as any).message } };
-  throw err;
 }
 
 export default { generateQuestions, createExam, createExamApproved };

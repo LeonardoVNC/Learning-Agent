@@ -4,15 +4,28 @@ set -e
 echo "Running lint-staged..."
 npx lint-staged
 
-#echo "Running backend tests..."
-#npm --prefix backend test -- --passWithNoTests
+echo "Checking TypeScript types..."
+if npm --prefix client run type-check && npm --prefix backend run type-check; then
+  echo "Type checks passed"
+else
+  echo "Type check failed, commit aborted"
+  exit 1
+fi
 
-#echo "Building frontend..."
-#if npm --prefix client run build; then
-#  echo "Frontend build completed successfully"
-#else
-#  echo "Frontend build failed, but commit will continue"
-#fi
+echo "Running unit tests (related files only)..."
+if npm --prefix backend test -- --passWithNoTests --bail; then
+  echo "Unit tests passed"
+else
+  echo "Unit tests failed, commit aborted"
+  exit 1
+fi
+# TODO: Fix issues with the frontend build process
+echo "Building frontend..."
+if npm --prefix client run build; then
+  echo "Frontend build completed successfully"
+else
+  echo "Frontend build failed, but commit will continue"
+fi
 
 echo "Building backend..."
 if npm --prefix backend run build; then

@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { Card, Typography, Button, Tag, Space, Spin } from 'antd';
 import { SyncOutlined } from '@ant-design/icons';
+import { palette } from '../../theme';
 import useExtractedData from '../../hooks/useExtractedData';
 
 const { Title, Paragraph } = Typography;
@@ -43,7 +44,7 @@ export const ChunksViewer: FC<ChunksViewerProps> = ({ documentId }) => {
           <Card 
             key={chunk.id || `chunk-${index}`}
             size="small"
-            style={{ backgroundColor: '#fafafa' }}
+            style={{ backgroundColor: palette.neutral50 }}
           >
             <Space style={{ marginBottom: 8 }}>
               <Tag color="blue">{`Chunk ${index + 1}`}</Tag>
@@ -61,7 +62,7 @@ export const ChunksViewer: FC<ChunksViewerProps> = ({ documentId }) => {
               backgroundColor: 'white',
               padding: 16,
               borderRadius: 4,
-              border: '1px solid #f0f0f0'
+              border: `1px solid ${palette.neutral300}`
             }}>
               <Paragraph
                 style={{

@@ -1,6 +1,5 @@
-import { Injectable, Inject } from '@nestjs/common';
-import type { DeepseekPort } from 'src/modules/deepseek/domain/ports/deepseek.port';
-import { DEEPSEEK_PORT } from 'src/modules/deepseek/tokens';
+import { Injectable } from '@nestjs/common';
+import { DsIntService } from 'src/modules/interviewChat/infrastructure/dsInt.service';
 
 export type GeneratedOptions = {
   options: string[];
@@ -14,23 +13,37 @@ export type GeneratedQuestion = {
 
 @Injectable()
 export class AIQuestionGenerator {
-  constructor(@Inject(DEEPSEEK_PORT) private readonly deepseek?: DeepseekPort) {}
+  constructor(private readonly dsIntService?: DsIntService) {}
 
   private normalizeLine(l: string) {
     return l.replace(/^[\d\)\.\-\s]+/, '').trim();
   }
 
   async generateQuestion(): Promise<GeneratedQuestion> {
-    if (!this.deepseek) return { text: 'Genera una pregunta sobre algoritmos de programación, de opción múltiple' };
-    const resp = await this.deepseek.generateQuestion('Genera una pregunta sobre algoritmos de programación, de opción múltiple');
-    const text = resp?.question ?? 'Pregunta sobre algoritmos de programación, de opción múltiple';
+    if (!this.dsIntService)
+      return {
+        text: 'Genera una pregunta sobre algoritmos de programación, de opción múltiple',
+      };
+    const resp = await this.dsIntService?.generateQuestion(
+      'Genera una pregunta sobre algoritmos de programación, de opción múltiple',
+    );
+    const text =
+      resp?.question ??
+      'Pregunta sobre algoritmos de programación, de opción múltiple';
     return { text };
   }
 
   async generateTrueFalseQuestion(): Promise<GeneratedQuestion> {
-    if (!this.deepseek) return { text: 'El algoritmo de Quicksort siempre es estable. (Verdadero o Falso)' };
-    const resp = await this.deepseek.generateQuestion('Genera una pregunta de verdadero o falso sobre algoritmos de programación');
-    const text = resp?.question ?? 'Pregunta de verdadero o falso sobre algoritmos de programación';
+    if (!this.dsIntService)
+      return {
+        text: 'El algoritmo de Quicksort siempre es estable. (Verdadero o Falso)',
+      };
+    const resp = await this.dsIntService?.generateQuestion(
+      'Genera una pregunta de verdadero o falso sobre algoritmos de programación',
+    );
+    const text =
+      resp?.question ??
+      'Pregunta de verdadero o falso sobre algoritmos de programación';
     return { text };
   }
 
@@ -48,13 +61,15 @@ export class AIQuestionGenerator {
       confidence: null,
     };
 
-    if (!this.deepseek) return fallback;
+    if (!this.dsIntService) return fallback;
 
     try {
-      const resp = await this.deepseek.generateResponse(
-        `Genera 4 opciones relacionadas y distintas para esta pregunta: "${questionText}"`
+      const resp = await this.dsIntService?.generateResponse(
+        `Genera 4 opciones relacionadas y distintas para esta pregunta: "${questionText}"`,
       );
-      const candidate = (resp?.answer ?? resp?.explanatio ?? '').toString().trim();
+      const candidate = (resp?.answer ?? resp?.explanation ?? '')
+        .toString()
+        .trim();
       if (!candidate) return fallback;
 
       try {
@@ -77,7 +92,12 @@ export class AIQuestionGenerator {
       if (lines.length >= 4) return { options: lines.slice(0, 4), correctIndex: null, confidence: null };
 
       const pieces = candidate.split(/;|\/|\||\t/).map(p => p.trim()).filter(Boolean);
-      if (pieces.length >= 4) return { options: pieces.slice(0, 4), correctIndex: null, confidence: null };
+      if (pieces.length >= 4)
+        return {
+          options: pieces.slice(0, 4),
+          correctIndex: null,
+          confidence: null,
+        };
 
       return fallback;
     } catch (err) {

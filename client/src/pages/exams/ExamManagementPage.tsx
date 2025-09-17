@@ -32,13 +32,13 @@ export default function ExamManagementPage() {
   // Breadcrumbs dinámicos basados en contexto
   const breadcrumbs = courseId 
     ? [
-        { label: 'Home', href: '/' },
+        { label: 'Inicio', href: '/' },
         { label: 'Materias', href: '/professor/courses' },
         { label: actualCourse?.name || 'Curso', href: `/professor/courses/${courseId}/periods` },
         { label: 'Exámenes' }
       ]
     : [
-        { label: 'Home', href: '/' },
+        { label: 'Inicio', href: '/' },
         { label: 'Materias', href: '/professor/courses' },
         { label: 'Gestión de Exámenes'}
       ];

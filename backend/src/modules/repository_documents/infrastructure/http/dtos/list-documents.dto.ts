@@ -4,6 +4,7 @@ import {
   IsUrl,
   IsDateString,
   IsArray,
+  IsOptional,
   ValidateNested,
 } from 'class-validator';
 import { Type } from 'class-transformer';
@@ -30,6 +31,14 @@ export class DocumentListItemDto {
   @IsDateString()
   uploadedAt: Date;
 
+  @IsOptional()
+  @IsString()
+  courseId?: string;
+
+  @IsOptional()
+  @IsString()
+  classId?: string;
+
   constructor(
     id: string,
     fileName: string,
@@ -38,6 +47,8 @@ export class DocumentListItemDto {
     size: number,
     downloadUrl: string,
     uploadedAt: Date,
+    courseId?: string,
+    classId?: string,
   ) {
     this.id = id;
     this.fileName = fileName;
@@ -46,6 +57,8 @@ export class DocumentListItemDto {
     this.size = size;
     this.downloadUrl = downloadUrl;
     this.uploadedAt = uploadedAt;
+    this.courseId = courseId;
+    this.classId = classId;
   }
 }
 

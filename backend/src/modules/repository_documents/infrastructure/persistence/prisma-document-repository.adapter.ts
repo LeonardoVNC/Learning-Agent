@@ -14,6 +14,14 @@ export class PrismaDocumentRepositoryAdapter implements DocumentRepositoryPort {
 
   async save(document: Document): Promise<Document> {
     try {
+      // Log para verificar valores de courseId y classId
+      this.logger.log('Guardando documento con values:', {
+        documentId: document.id,
+        fileName: document.fileName,
+        courseId: document.courseId,
+        classId: document.classId,
+      });
+
       // Usar upsert para manejar casos donde el documento pueda existir
       const savedDocument = await this.prisma.document.upsert({
         where: { id: document.id },
@@ -32,6 +40,8 @@ export class PrismaDocumentRepositoryAdapter implements DocumentRepositoryPort {
           documentTitle: document.documentTitle,
           documentAuthor: document.documentAuthor,
           language: document.language,
+          courseId: document.courseId,
+          classId: document.classId,
           updatedAt: new Date(),
         },
         create: {
@@ -50,6 +60,8 @@ export class PrismaDocumentRepositoryAdapter implements DocumentRepositoryPort {
           documentTitle: document.documentTitle,
           documentAuthor: document.documentAuthor,
           language: document.language,
+          courseId: document.courseId,
+          classId: document.classId,
         },
       });
 
@@ -246,6 +258,36 @@ export class PrismaDocumentRepositoryAdapter implements DocumentRepositoryPort {
     }
   }
 
+  async findWithFilters(
+    filters?: { courseId?: string; classId?: string },
+    offset = 0,
+    limit = 50,
+  ): Promise<Document[]> {
+    try {
+      const whereClause: any = {};
+
+      if (filters?.courseId) {
+        whereClause.courseId = filters.courseId;
+      }
+
+      if (filters?.classId) {
+        whereClause.classId = filters.classId;
+      }
+
+      const documents = await this.prisma.document.findMany({
+        where: whereClause,
+        skip: offset,
+        take: limit,
+        orderBy: { uploadedAt: 'desc' },
+      });
+
+      return documents.map((doc) => this.mapToDomain(doc));
+    } catch (error) {
+      this.logger.error(`Error finding documents with filters: ${error.message}`);
+      throw new Error(`Failed to find documents with filters: ${error.message}`);
+    }
+  }
+
   async count(): Promise<number> {
     try {
       return await this.prisma.document.count();
@@ -284,13 +326,15 @@ export class PrismaDocumentRepositoryAdapter implements DocumentRepositoryPort {
       prismaDocument.uploadedBy,
       prismaDocument.status as DocumentStatus,
       prismaDocument.extractedText,
+      prismaDocument.textHash,
       prismaDocument.pageCount,
       prismaDocument.documentTitle,
       prismaDocument.documentAuthor,
       prismaDocument.language,
+      prismaDocument.courseId,
+      prismaDocument.classId,
       prismaDocument.uploadedAt,
       prismaDocument.updatedAt,
-      prismaDocument.textHash,
     );
   }
 

@@ -9,7 +9,7 @@ import type {
 import type { Document } from '../interfaces/documentInterface';
 
 export const useChunkedDocumentUpload = () => {
-  const { id: userId } = useUser();
+  const { id: _userId } = useUser();
   
   const processDocumentComplete = useCallback(async (
     document: ChunkedUploadResult['document'],
@@ -48,8 +48,8 @@ export const useChunkedDocumentUpload = () => {
           if (chunksInfo.data && chunksInfo.data.total > 0) {
             // The document already has chunks, no post-processing needed
             onProgress?.('complete', 100, uploadStatus === 'restored' 
-              ? 'Document restored and already processed' 
-              : 'Document already processed');
+              ? 'Documento restaurado y ya procesado' 
+              : 'Documento ya procesado');
             return {
               success: true,
               document: documentForProcessing,
@@ -84,10 +84,10 @@ export const useChunkedDocumentUpload = () => {
         }
       }
 
-      onProgress?.('chunks', 66, 'Generating document chunks...');
+      onProgress?.('chunks', 66, 'Generando chunks del documento...');
       const chunksResult = await documentService.processDocumentChunks(document.id);
 
-      onProgress?.('complete', 100, 'Processing completed');
+      onProgress?.('complete', 100, 'Procesamiento completado');
 
       return {
         success: true,
@@ -100,7 +100,7 @@ export const useChunkedDocumentUpload = () => {
       };
     } catch (error) {
       console.error('Error in post-upload processing:', error);
-      throw new Error('Error in post-upload document processing');
+      throw new Error('Error en el procesamiento posterior del documento');
     }
   }, []);
 

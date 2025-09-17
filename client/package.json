@@ -17,7 +17,8 @@
     "docker:up": "cd ../infra/docker && docker compose -f minio.compose.yml up -d && docker compose -f compose.dev.yml up -d",
     "docker:down": "cd ../infra/docker && docker compose -f compose.dev.yml down && docker compose -f minio.compose.yml down",
     "e2e:full": "npm run docker:up && npm run start:e2e",
-    "start:e2e": "concurrently \"npm run start --prefix ../backend\" \"npm run dev\""
+    "start:e2e": "concurrently \"npm run start --prefix ../backend\" \"npm run dev\"",
+    "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@ant-design/icons": "^6.0.0",

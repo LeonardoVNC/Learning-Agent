@@ -1,18 +1,26 @@
-import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ValidateCorrectAnswer } from '../validators/correct-answer.validator';
 
 export class UpdateExamQuestionDto {
-    @IsOptional() @IsString() @MaxLength(4000)
-    text?: string;
+  @IsOptional()
+  kind!: 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'OPEN_ANALYSIS' | 'OPEN_EXERCISE';
 
-    @IsOptional() @IsArray()
-    options?: string[];
+  @IsOptional() @IsString() @MaxLength(4000)
+  text?: string;
 
-    @IsOptional() @IsInt() @Min(0)
-    correctOptionIndex?: number;
+  @IsOptional() @IsArray()
+  options?: string[];
 
-    @IsOptional() @IsBoolean()
-    correctBoolean?: boolean;
+  @IsOptional() @IsInt()
+  correctOptionIndex?: number;
 
-    @IsOptional() @IsString()
-    expectedAnswer?: string;
+  @IsOptional() @IsBoolean()
+  correctBoolean?: boolean;
+
+  @IsOptional() @IsString()
+  expectedAnswer?: string;
+
+  @IsOptional()
+  @ValidateCorrectAnswer()
+  correctAnswer?: number | boolean | null;
 }

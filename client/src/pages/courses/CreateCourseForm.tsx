@@ -1,9 +1,9 @@
 import { useEffect } from "react";
-import { useUserStore } from "../../store/userStore";
 import { Button, Form, Input, Modal } from "antd";
 import { useFormik } from "formik";
 import * as Yup from "yup";
 import type { CreateCourseDTO } from "../../interfaces/courseInterface";
+import { useUserStore } from "../../store/userStore";
 
 interface CreateCourseFormProps {
   open: boolean;

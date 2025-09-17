@@ -11,6 +11,8 @@ const { Text } = Typography;
 type Props = {
   data: ExamSummary[];
   onEdit?: (exam?: ExamSummary) => void;
+  onDelete?: (id: string) => Promise<void> | void;
+  disableStatusControls?: boolean;
 };
 
 function fmt(dateIso?: string) {
@@ -220,7 +222,7 @@ function handleDownloadPdf(exam: ExamSummary, mode: PrintMode) {
 }
 /* =========================== FIN helpers =========================== */
 
-export default function ExamTable({ data, onEdit }: Props) {
+export default function ExamTable({ data, onEdit, onDelete, disableStatusControls = true }: Props) {
   const toggleVisibility = useExamsStore((s: ExamsState) => s.toggleVisibility);
   const setVisibility = useExamsStore((s: ExamsState) => s.setVisibility);
   const setStatus = useExamsStore((s: ExamsState) => s.setStatus);
@@ -328,7 +330,7 @@ export default function ExamTable({ data, onEdit }: Props) {
                   <DownOutlined style={{ fontSize: 10, marginLeft: 4 }} />
                 </Button>
               </Tooltip>
-            </Dropdown>
+            </Dropdown>            
 
             <Popconfirm
               title="Eliminar examen"
@@ -336,7 +338,7 @@ export default function ExamTable({ data, onEdit }: Props) {
               okText="Eliminar"
               cancelText="Cancelar"
               okButtonProps={{ danger: true }}
-              onConfirm={() => { removeExam(record.id); message.success('Examen eliminado'); }}
+              onConfirm={async () => { if (onDelete) { await onDelete(record.id); } else { removeExam(record.id); } message.success('Examen eliminado'); }}
             >
               <Tooltip title="Eliminar">
                 <Button type="text" danger style={{ paddingInline: 6 }} icon={<DeleteOutlined style={{ fontSize: 18 }} />} aria-label="Eliminar" />

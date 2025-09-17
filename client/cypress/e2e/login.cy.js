@@ -7,7 +7,6 @@ describe('Login de usuario', () => {
 
     cy.get('button[type="submit"]').click();
 
-
     cy.url().should('include', '/');
     cy.contains('LEARNING ISC', { timeout: 10000 }).should('be.visible');
   });

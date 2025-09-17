@@ -1,24 +1,30 @@
-import { ExamQuestion, NewExamQuestion } from '../entities/exam-question.entity';
+import type { ExamQuestion, NewExamQuestion, InsertPosition, UpdateExamQuestionPatch, DerivedCounts, } from '../models/exam-question.models';
 
-export type InsertPosition = 'start' | 'middle' | 'end';
-
-export type UpdateExamQuestionPatch = {
-  text?: string;
-  options?: string[];
-  correctOptionIndex?: number;
-  correctBoolean?: boolean;
-  expectedAnswer?: string;
-};
 export interface ExamQuestionRepositoryPort {
-  existsExam(examId: string): Promise<boolean>;
-  countByExam(examId: string): Promise<number>;
-  addToExam(
+  existsExamOwned(examId: string, teacherId: string): Promise<boolean>;
+
+  countByExamOwned(examId: string, teacherId: string): Promise<number>;
+  countsByExamOwned(examId: string, teacherId: string): Promise<DerivedCounts>;
+
+  bulkCountsByExamIdsOwned(
+    examIds: string[],
+    teacherId: string,
+  ): Promise<Map<string, DerivedCounts>>;
+
+  addToExamOwned(
     examId: string,
+    teacherId: string,
     question: NewExamQuestion,
     position: InsertPosition
   ): Promise<ExamQuestion>;
 
-  findById(id: string): Promise<ExamQuestion | null>;
-  update(id: string, patch: UpdateExamQuestionPatch): Promise<ExamQuestion>;
-  listByExam(examId: string): Promise<ExamQuestion[]>;
+  findByIdOwned(id: string, teacherId: string): Promise<ExamQuestion | null>;
+
+  updateOwned(
+    id: string,
+    teacherId: string,
+    patch: UpdateExamQuestionPatch
+  ): Promise<ExamQuestion>;
+
+  listByExamOwned(examId: string, teacherId: string): Promise<ExamQuestion[]>;
 }

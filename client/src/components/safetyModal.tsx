@@ -1,11 +1,12 @@
 import React, { useState, useCallback } from "react";
-import { Modal, Button, Typography } from "antd";
+import { Modal, Button, Typography, theme as antTheme } from "antd";
 import {
   DeleteOutlined,
   ExclamationCircleOutlined,
   FileTextOutlined,
 } from "@ant-design/icons";
 import type { ButtonProps } from "antd";
+import { useThemeStore } from '../store/themeStore';
 
 const { Text } = Typography;
 
@@ -122,48 +123,6 @@ export const SafetyModal = ({
   );
 };
 
-/**
- * DeleteButton - Componente reutilizable para eliminación con confirmación
- *
- * Este componente encapsula un botón de eliminación junto con un modal de confirmación.
- * Maneja internamente todos los estados necesarios (loading, modal abierto, etc.)
- * y proporciona callbacks para diferentes eventos del flujo de eliminación.
- *
- * Características:
- * - Color fijo: #bb1717ff
- * - Ícono fijo: DeleteOutlined
- * - Modal de confirmación con estilos predefinidos
- * - Manejo automático de estados de carga y errores
- *
- * @example
- * ```tsx
- * // Botón simple con texto
- * <DeleteButton
- *   onDelete={() => deleteDocument(doc.id)}
- *   resourceInfo={{
- *     name: doc.name,
- *     type: "Documento PDF",
- *     icon: <FileTextOutlined />
- *   }}
- *   buttonConfig={{ showText: true }}
- *   onDeleteSuccess={() => message.success("Eliminado")}
- * />
- *
- * // Botón solo con ícono
- * <DeleteButton
- *   onDelete={() => deleteUser(user.id)}
- *   resourceInfo={{
- *     name: user.name,
- *     type: "Usuario"
- *   }}
- *   buttonConfig={{
- *     showText: false,
- *     variant: "ghost",
- *     shape: "circle"
- *   }}
- * />
- * ```
- */
 const DeleteButton: React.FC<DeleteButtonProps> = ({
   onDelete,
   resourceInfo,
@@ -178,6 +137,11 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({
   // Estados internos
   const [modalOpen, setModalOpen] = useState<boolean>(false);
   const [deleting, setDeleting] = useState<boolean>(false);
+
+  // Tema
+  const theme = useThemeStore((state) => state.theme);
+  const isDark = theme === "dark";
+  const { token } = antTheme.useToken();
 
   // Configuración por defecto del botón
   const {
@@ -274,13 +238,14 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({
       {/* Modal de confirmación */}
       <Modal
         title={
-          <div
-            style={{ display: "flex", alignItems: "center", color: "#d32f2f" }}
-          >
-            <ExclamationCircleOutlined
-              style={{ marginRight: "8px", fontSize: "20px" }}
-            />
-            <span style={{ fontWeight: "600" }}>Confirmar eliminación</span>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            color: isDark ? token.colorError : '#d32f2f',
+            padding: `${token.paddingXS}px 0`
+          }}>
+            <ExclamationCircleOutlined style={{ marginRight: token.marginXS, fontSize: '20px' }} />
+            <span style={{ fontWeight: '600' }}>Confirmar eliminación</span>
           </div>
         }
         open={modalOpen}
@@ -291,90 +256,81 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({
         confirmLoading={deleting}
         centered
         width={480}
+        styles={{
+          body: {
+            padding: `${token.paddingLG}px`,
+          }
+        }}
         okButtonProps={{
           danger: true,
           size: "large",
           style: {
-            backgroundColor: "#d32f2f",
-            borderColor: "#d32f2f",
-            fontWeight: "500",
-          },
+            backgroundColor: isDark ? token.colorErrorActive : '#d32f2f',
+            borderColor: isDark ? token.colorErrorBorder : '#d32f2f',
+            fontWeight: '500'
+          }
         }}
         cancelButtonProps={{
           size: "large",
           style: {
-            borderColor: "#7A85C1",
-            color: "#3B38A0",
-            fontWeight: "500",
-          },
+            borderColor: isDark ? token.colorBorder : '#7A85C1',
+            color: isDark ? token.colorText : '#3B38A0',
+            fontWeight: '500'
+          }
         }}
       >
         <div style={{ textAlign: "center" }}>
           {/* Ícono principal de eliminación */}
-          <div
-            style={{
-              fontSize: "48px",
-              color: "#ff7875",
-              marginBottom: "16px",
-              display: "flex",
-              justifyContent: "center",
-              alignItems: "center",
-            }}
-          >
-            <DeleteOutlined style={{ fontSize: "48px" }} />
+          <div style={{
+            fontSize: '48px',
+            color: isDark ? token.colorError : '#ff7875',
+            marginBottom: token.marginLG,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center'
+          }}>
+            <DeleteOutlined style={{ fontSize: '48px' }} />
           </div>
 
           {/* Mensaje de confirmación */}
-          <p
-            style={{
-              marginBottom: "16px",
-              fontSize: "16px",
-              color: "#262626",
-              lineHeight: "1.5",
-            }}
-          >
+          <p style={{
+            marginBottom: token.marginLG,
+            fontSize: '16px',
+            color: isDark ? token.colorText : '#262626',
+            lineHeight: '1.5'
+          }}>
             {modalMessage}
           </p>
 
           {/* Información del recurso */}
-          <div
-            style={{
-              backgroundColor: "#fff2e8",
-              border: "1px solid #ffcc7a",
-              borderRadius: "8px",
-              padding: "16px",
-              marginTop: "16px",
-              textAlign: "left",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginBottom: "4px",
-              }}
-            >
-              <div style={{ color: "#d46b08", fontSize: "16px" }}>
+          <div style={{
+            backgroundColor: isDark ? token.colorWarningBg : '#fff2e8',
+            border: `1px solid ${isDark ? token.colorWarningBorder : '#ffcc7a'}`,
+            borderRadius: token.borderRadius,
+            padding: token.paddingLG,
+            marginTop: token.marginLG,
+            textAlign: 'left'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: token.marginXS }}>
+              <div style={{ 
+                color: isDark ? token.colorWarning : '#d46b08', 
+                fontSize: '16px' 
+              }}>
                 {resourceInfo.icon || <FileTextOutlined />}
               </div>
-              <Text
-                strong
-                style={{
-                  color: "#d46b08",
-                  fontSize: "14px",
-                  marginLeft: "8px",
-                }}
-              >
+              <Text strong style={{ 
+                color: isDark ? token.colorWarning : '#d46b08', 
+                fontSize: '14px',
+                marginLeft: token.marginXS
+              }}>
                 {resourceInfo.name}
               </Text>
               {resourceInfo.type && (
-                <Text
-                  style={{
-                    fontSize: "12px",
-                    marginLeft: "8px",
-                    color: "#fa8c16",
-                  }}
-                >
+                <Text style={{ 
+                  fontSize: '12px',
+                  marginLeft: token.marginXS,
+                  color: isDark ? token.colorWarningText : '#fa8c16'
+                }}>
                   ({resourceInfo.type})
                 </Text>
               )}
@@ -382,35 +338,27 @@ const DeleteButton: React.FC<DeleteButtonProps> = ({
 
             {/* Información adicional */}
             {resourceInfo.additionalInfo && (
-              <div
-                style={{ marginTop: "8px", fontSize: "12px", color: "#d48806" }}
-              >
+              <div style={{ 
+                marginTop: token.marginXS, 
+                fontSize: '12px', 
+                color: isDark ? token.colorWarningText : '#d48806' 
+              }}>
                 {resourceInfo.additionalInfo}
               </div>
             )}
 
             {/* Mensaje de advertencia */}
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                marginTop: "8px",
-              }}
-            >
-              <ExclamationCircleOutlined
-                style={{
-                  color: "#fa8c16",
-                  marginRight: "6px",
-                  fontSize: "12px",
-                }}
-              />
-              <Text
-                style={{
-                  fontSize: "12px",
-                  fontStyle: "italic",
-                  color: "#d48806",
-                }}
-              >
+            <div style={{ display: 'flex', alignItems: 'center', marginTop: token.marginXS }}>
+              <ExclamationCircleOutlined style={{ 
+                color: isDark ? token.colorWarning : '#fa8c16', 
+                marginRight: token.marginXXS, 
+                fontSize: '12px' 
+              }} />
+              <Text style={{ 
+                fontSize: '12px', 
+                fontStyle: 'italic',
+                color: isDark ? token.colorWarningText : '#d48806'
+              }}>
                 Esta acción no se puede deshacer
               </Text>
             </div>

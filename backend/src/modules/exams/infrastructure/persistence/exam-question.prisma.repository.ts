@@ -1,144 +1,387 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
+
 import { PrismaService } from '../../../../core/prisma/prisma.service';
-import type { ExamQuestionRepositoryPort, InsertPosition } from '../../domain/ports/exam-question.repository.port';
-import type { ExamQuestion, NewExamQuestion } from '../../domain/entities/exam-question.entity';
-import { Prisma } from '@prisma/client';
+import {
+  DerivedCounts,
+  InsertPosition,
+  UpdateExamQuestionPatch,
+} from '../../domain/models/exam-question.models';
+import { ExamQuestionRepositoryPort } from '../../domain/ports/exam-question.repository.port';
+import { ExamQuestion } from '../../domain/entities/exam-question.entity';
+
+type Kind = 'MULTIPLE_CHOICE' | 'TRUE_FALSE' | 'OPEN_ANALYSIS' | 'OPEN_EXERCISE';
+
+function mapRowToDomain(q: any): ExamQuestion {
+  return {
+    id: q.id,
+    examId: q.examId,
+    kind: q.kind as Kind,
+    text: q.text,
+    order: q.order,
+    options: q.mcq ? q.mcq.options.map((o: any) => o.text) : undefined,
+    correctOptionIndex: q.mcq?.correctOptionIndex ?? undefined,
+    correctBoolean: q.trueFalse?.answer ?? undefined,
+    expectedAnswer:
+      q.openAnalysis?.expectedAnswer ??
+      q.openExercise?.expectedAnswer ??
+      undefined,
+  } as ExamQuestion;
+}
 
 @Injectable()
-export class ExamQuestionPrismaRepository implements ExamQuestionRepositoryPort {
+export class PrismaExamQuestionRepository implements ExamQuestionRepositoryPort {
   constructor(private readonly prisma: PrismaService) {}
-  private readonly logger = new Logger(ExamQuestionPrismaRepository.name);
 
-  async existsExam(examId: string): Promise<boolean> {
-    const c = await this.prisma.exam.count({ where: { id: examId } });
-    return c > 0;
+  private ownedExamWhere(examId: string, teacherId: string) {
+    return {
+      id: examId,
+      class: { course: { teacherId } },
+    };
   }
 
-  async countByExam(examId: string): Promise<number> {
-    return this.prisma.examQuestion.count({ where: { examId } });
+  private ownedQuestionWhere(questionId: string, teacherId: string) {
+    return {
+      id: questionId,
+      exam: { class: { course: { teacherId } } },
+    };
   }
 
-  async addToExam(examId: string, q: NewExamQuestion, position: InsertPosition): Promise<ExamQuestion> {
-    this.logger.log(`addToExam -> examId=${examId}, kind=${q.kind}, position=${position}`);
+  async existsExamOwned(examId: string, teacherId: string): Promise<boolean> {
+    const n = await this.prisma.exam.count({
+      where: this.ownedExamWhere(examId, teacherId),
+    });
+    return n > 0;
+  }
+
+  async countByExamOwned(examId: string, teacherId: string): Promise<number> {
+    return this.prisma.examQuestion.count({
+      where: { examId, exam: { class: { course: { teacherId } } } },
+    });
+  }
+
+  async countsByExamOwned(
+    examId: string,
+    teacherId: string,
+  ): Promise<DerivedCounts> {
+    const list = await this.prisma.examQuestion.findMany({
+      where: { examId, exam: { class: { course: { teacherId } } } },
+      select: { kind: true },
+    });
+
+    let mcq = 0,
+      tf = 0,
+      oa = 0,
+      oe = 0;
+    for (const r of list) {
+      switch (r.kind as Kind) {
+        case 'MULTIPLE_CHOICE':
+          mcq++;
+          break;
+        case 'TRUE_FALSE':
+          tf++;
+          break;
+        case 'OPEN_ANALYSIS':
+          oa++;
+          break;
+        case 'OPEN_EXERCISE':
+          oe++;
+          break;
+      }
+    }
+
+    return {
+      totalQuestions: list.length,
+      mcqCount: mcq,
+      trueFalseCount: tf,
+      openAnalysisCount: oa,
+      openExerciseCount: oe,
+    };
+  }
+
+  async bulkCountsByExamIdsOwned(
+    examIds: string[],
+    teacherId: string,
+  ): Promise<Map<string, DerivedCounts>> {
+    const out = new Map<string, DerivedCounts>();
+    if (examIds.length === 0) return out;
+
+    const rows = await this.prisma.examQuestion.findMany({
+      where: {
+        examId: { in: examIds },
+        exam: { class: { course: { teacherId } } },
+      },
+      select: { examId: true, kind: true },
+    });
+
+    const tmp = new Map<
+      string,
+      { total: number; mcq: number; tf: number; oa: number; oe: number }
+    >();
+    for (const r of rows) {
+      const bucket =
+        tmp.get(r.examId) || { total: 0, mcq: 0, tf: 0, oa: 0, oe: 0 };
+      bucket.total++;
+      switch (r.kind as Kind) {
+        case 'MULTIPLE_CHOICE':
+          bucket.mcq++;
+          break;
+        case 'TRUE_FALSE':
+          bucket.tf++;
+          break;
+        case 'OPEN_ANALYSIS':
+          bucket.oa++;
+          break;
+        case 'OPEN_EXERCISE':
+          bucket.oe++;
+          break;
+      }
+      tmp.set(r.examId, bucket);
+    }
+
+    for (const id of examIds) {
+      const b = tmp.get(id) || { total: 0, mcq: 0, tf: 0, oa: 0, oe: 0 };
+      out.set(id, {
+        totalQuestions: b.total,
+        mcqCount: b.mcq,
+        trueFalseCount: b.tf,
+        openAnalysisCount: b.oa,
+        openExerciseCount: b.oe,
+      });
+    }
+    return out;
+  }
+
+  async addToExamOwned(
+    examId: string,
+    teacherId: string,
+    question: any, 
+    position: InsertPosition,
+  ): Promise<ExamQuestion> {
+    const exists = await this.existsExamOwned(examId, teacherId);
+    if (!exists) throw new Error('Exam not found or not owned by teacher.');
+
     return this.prisma.$transaction(async (tx) => {
-      const count = await tx.examQuestion.count({ where: { examId } });
+      const max = await tx.examQuestion.aggregate({
+        where: { examId },
+        _max: { order: true },
+      });
+      const currentMax = max._max.order ?? 0;
 
-      let insertionOrder = 1;
-      if (position === 'start') insertionOrder = 1;
-      else if (position === 'end') insertionOrder = count + 1;
-      else if (position === 'middle') insertionOrder = Math.floor(count / 2) + 1;
-      this.logger.log(`addToExam -> computed insertionOrder=${insertionOrder} (existing=${count})`);
-
-      if (insertionOrder <= count) {
+      let targetOrder = currentMax + 1;
+      if (position === 'start') {
+        targetOrder = 1;
         await tx.examQuestion.updateMany({
-          where: { examId, order: { gte: insertionOrder } },
+          where: { examId },
           data: { order: { increment: 1 } },
+        });
+      } else if (position === 'middle') {
+        targetOrder = Math.floor((currentMax + 2) / 2); 
+        await tx.examQuestion.updateMany({
+          where: { examId, order: { gte: targetOrder } },
+          data: { order: { increment: 1 } },
+        });
+      } 
+
+      const createdQuestion = await tx.examQuestion.create({
+        data: {
+          examId,
+          kind: question.kind,
+          text: question.text.trim(),
+          order: targetOrder,
+        },
+      });
+
+      switch (question.kind as Kind) {
+        case 'MULTIPLE_CHOICE': {
+          await tx.mCQ.create({
+            data: {
+              questionId: createdQuestion.id,
+              correctOptionIndex: question.correctOptionIndex,
+            },
+          });
+          const options = (question.options ?? []).map((text: string, idx: number) => ({
+            mcqId: createdQuestion.id,
+            idx,
+            text,
+          }));
+          if (options.length > 0) {
+            await tx.mCQOption.createMany({ data: options });
+          }
+          break;
+        }
+        case 'TRUE_FALSE': {
+          await tx.trueFalse.create({
+            data: {
+              questionId: createdQuestion.id,
+              answer: !!question.correctBoolean,
+            },
+          });
+          break;
+        }
+        case 'OPEN_ANALYSIS': {
+          await tx.openAnalysis.create({
+            data: {
+              questionId: createdQuestion.id,
+              expectedAnswer: question.expectedAnswer ?? '',
+            },
+          });
+          break;
+        }
+        case 'OPEN_EXERCISE': {
+          await tx.openExercise.create({
+            data: {
+              questionId: createdQuestion.id,
+              expectedAnswer: question.expectedAnswer ?? '',
+            },
+          });
+          break;
+        }
+      }
+
+      const row = await tx.examQuestion.findUnique({
+        where: { id: createdQuestion.id },
+        include: {
+          mcq: { include: { options: { orderBy: { idx: 'asc' } } } },
+          trueFalse: true,
+          openAnalysis: true,
+          openExercise: true,
+        },
+      });
+
+      return mapRowToDomain(row);
+    });
+  }
+
+  async findByIdOwned(
+    id: string,
+    teacherId: string,
+  ): Promise<ExamQuestion | null> {
+    const row = await this.prisma.examQuestion.findFirst({
+      where: this.ownedQuestionWhere(id, teacherId),
+      include: {
+        mcq: { include: { options: { orderBy: { idx: 'asc' } } } },
+        trueFalse: true,
+        openAnalysis: true,
+        openExercise: true,
+      },
+    });
+    if (!row) return null;
+    return mapRowToDomain(row);
+  }
+
+  async updateOwned(
+    id: string,
+    teacherId: string,
+    patch: UpdateExamQuestionPatch,
+  ): Promise<ExamQuestion> {
+    return this.prisma.$transaction(async (tx) => {
+      const current = await tx.examQuestion.findFirst({
+        where: this.ownedQuestionWhere(id, teacherId),
+        include: {
+          mcq: { include: { options: true } },
+          trueFalse: true,
+          openAnalysis: true,
+          openExercise: true,
+        },
+      });
+      if (!current) throw new Error('Question not found or not owned by teacher.');
+
+      if (patch.text !== undefined) {
+        await tx.examQuestion.update({
+          where: { id },
+          data: { text: patch.text.trim() },
         });
       }
 
-      const created = await tx.examQuestion.create({
-        data: {
-          examId,
-          kind: q.kind as any, 
-          text: q.text,
-          options: q.options ? (q.options as unknown as Prisma.InputJsonValue) : undefined,
-          correctOptionIndex: q.correctOptionIndex ?? null,
-          correctBoolean: q.correctBoolean ?? null,
-          expectedAnswer: q.expectedAnswer ?? null,
-          order: insertionOrder,
+      switch (current.kind as Kind) {
+        case 'MULTIPLE_CHOICE': {
+          if (patch.options) {
+            await tx.mCQOption.deleteMany({ where: { mcqId: id } });
+            if (patch.options.length > 0) {
+              await tx.mCQOption.createMany({
+                data: patch.options.map((text, idx) => ({
+                  mcqId: id,
+                  idx,
+                  text: String(text),
+                })),
+              });
+            }
+          }
+          if (patch.correctOptionIndex != null) {
+            const count = await tx.mCQOption.count({ where: { mcqId: id } });
+            if (
+              patch.correctOptionIndex < 0 ||
+              patch.correctOptionIndex >= count
+            ) {
+              throw new Error('correctOptionIndex out of range.');
+            }
+            await tx.mCQ.update({
+              where: { questionId: id },
+              data: { correctOptionIndex: patch.correctOptionIndex },
+            });
+          }
+          break;
+        }
+
+        case 'TRUE_FALSE': {
+          if (patch.correctBoolean != null) {
+            await tx.trueFalse.update({
+              where: { questionId: id },
+              data: { answer: !!patch.correctBoolean },
+            });
+          }
+          break;
+        }
+
+        case 'OPEN_ANALYSIS': {
+          if (patch.expectedAnswer !== undefined) {
+            await tx.openAnalysis.update({
+              where: { questionId: id },
+              data: { expectedAnswer: String(patch.expectedAnswer) },
+            });
+          }
+          break;
+        }
+
+        case 'OPEN_EXERCISE': {
+          if (patch.expectedAnswer !== undefined) {
+            await tx.openExercise.update({
+              where: { questionId: id },
+              data: { expectedAnswer: String(patch.expectedAnswer) },
+            });
+          }
+          break;
+        }
+      }
+
+      const updated = await tx.examQuestion.findUnique({
+        where: { id },
+        include: {
+          mcq: { include: { options: { orderBy: { idx: 'asc' } } } },
+          trueFalse: true,
+          openAnalysis: true,
+          openExercise: true,
         },
       });
-      this.logger.log(`addToExam -> question created id=${created.id}`);
 
-      // sincroniza contadores + totalQuestions en el mismo commit
-      const data: Prisma.ExamUpdateArgs['data'] = { totalQuestions: { increment: 1 } };
-      if (q.kind === 'MULTIPLE_CHOICE') data.mcqCount = { increment: 1 };
-      else if (q.kind === 'TRUE_FALSE') data.trueFalseCount = { increment: 1 };
-      else if (q.kind === 'OPEN_ANALYSIS') data.openAnalysisCount = { increment: 1 };
-      else if (q.kind === 'OPEN_EXERCISE') data.openExerciseCount = { increment: 1 };
-
-      await tx.exam.update({ where: { id: examId }, data });
-      this.logger.log(`addToExam -> counters updated for examId=${examId}`);
-
-      return {
-        id: created.id,
-        examId: created.examId,
-        kind: q.kind,
-        text: created.text,
-        options: (created as any).options ?? undefined,
-        correctOptionIndex: created.correctOptionIndex ?? undefined,
-        correctBoolean: created.correctBoolean ?? undefined,
-        expectedAnswer: created.expectedAnswer ?? undefined,
-        order: created.order,
-        createdAt: created.createdAt,
-        updatedAt: created.updatedAt,
-      };
+      return mapRowToDomain(updated);
     });
   }
 
-    async findById(id: string) {
-    const row = await this.prisma.examQuestion.findUnique({ where: { id } });
-    if (!row) return null;
-    return {
-      id: row.id,
-      examId: row.examId,
-      kind: row.kind as any,
-      text: row.text,
-      options: (row as any).options ?? undefined,
-      correctOptionIndex: row.correctOptionIndex ?? undefined,
-      correctBoolean: row.correctBoolean ?? undefined,
-      expectedAnswer: row.expectedAnswer ?? undefined,
-      order: row.order,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    };
-  }
-
-  async update(id: string, patch: { text?: string; options?: string[]; correctOptionIndex?: number; correctBoolean?: boolean; expectedAnswer?: string; }) {
-    this.logger.log(`update -> id=${id}`);
-    const data: any = {};
-    if (patch.text != null) data.text = patch.text;
-    if (patch.options != null) (data as any).options = patch.options as any; // JSON
-    if (patch.correctOptionIndex != null) data.correctOptionIndex = patch.correctOptionIndex;
-    if (patch.correctBoolean != null) data.correctBoolean = patch.correctBoolean;
-    if (patch.expectedAnswer != null) data.expectedAnswer = patch.expectedAnswer;
-
-    const updated = await this.prisma.examQuestion.update({ where: { id }, data });
-    this.logger.log(`update <- id=${updated.id}`);
-
-    return {
-      id: updated.id,
-      examId: updated.examId,
-      kind: updated.kind as any,
-      text: updated.text,
-      options: (updated as any).options ?? undefined,
-      correctOptionIndex: updated.correctOptionIndex ?? undefined,
-      correctBoolean: updated.correctBoolean ?? undefined,
-      expectedAnswer: updated.expectedAnswer ?? undefined,
-      order: updated.order,
-      createdAt: updated.createdAt,
-      updatedAt: updated.updatedAt,
-    };
-  }
-
-    async listByExam(examId: string) {
+  async listByExamOwned(
+    examId: string,
+    teacherId: string,
+  ): Promise<ExamQuestion[]> {
     const rows = await this.prisma.examQuestion.findMany({
-      where: { examId },
-      orderBy: { order: 'asc' },
+      where: { examId, exam: { class: { course: { teacherId } } } },
+      orderBy: [{ order: 'asc' }],
+      include: {
+        mcq: { include: { options: { orderBy: { idx: 'asc' } } } },
+        trueFalse: true,
+        openAnalysis: true,
+        openExercise: true,
+      },
     });
-    return rows.map((row) => ({
-      id: row.id,
-      examId: row.examId,
-      kind: row.kind as any,
-      text: row.text,
-      options: (row as any).options ?? undefined,
-      correctOptionIndex: row.correctOptionIndex ?? undefined,
-      correctBoolean: row.correctBoolean ?? undefined,
-      expectedAnswer: row.expectedAnswer ?? undefined,
-      order: row.order,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
-    }));
+    return rows.map(mapRowToDomain);
   }
-
 }

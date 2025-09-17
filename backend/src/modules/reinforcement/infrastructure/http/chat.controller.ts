@@ -1,21 +1,17 @@
-import { Body, Controller, HttpCode, Inject, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 
 import { ChatRequest } from './dto/chat-request';
-import { DEEPSEEK_PORT } from 'src/modules/deepseek/tokens';
-import type { DeepseekPort } from 'src/modules/deepseek/domain/ports/deepseek.port';
-import { ChatResponse } from 'src/modules/deepseek/domain/ports/response';
+import { ChatResponse } from './dto/response';
+import { DsService } from '../ds.service';
 
 @Controller('chat')
 export class ChatController {
-  constructor(
-    @Inject(DEEPSEEK_PORT)
-    private readonly deepseekPort: DeepseekPort,
-  ) {}
+  constructor(private readonly dsService: DsService) {}
 
   @Post()
   @HttpCode(200)
   async chatWithIA(@Body() dto: ChatRequest): Promise<ChatResponse> {
-    const response = await this.deepseekPort.generateResponse(dto.question);
+    const response = await this.dsService.generateResponse(dto.question);
     return response;
   }
 }

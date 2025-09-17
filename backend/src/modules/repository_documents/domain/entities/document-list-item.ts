@@ -7,6 +7,8 @@ export class DocumentListItem {
     public readonly size: number,
     public readonly downloadUrl: string,
     public readonly uploadedAt: Date,
+    public readonly courseId?: string,
+    public readonly classId?: string,
   ) {}
 
   /**
@@ -21,6 +23,8 @@ export class DocumentListItem {
       size: this.size,
       downloadUrl: this.downloadUrl,
       uploadedAt: this.uploadedAt,
+      courseId: this.courseId,
+      classId: this.classId,
     };
   }
 }

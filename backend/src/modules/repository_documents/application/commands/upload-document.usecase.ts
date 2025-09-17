@@ -20,6 +20,8 @@ export interface UploadWithPreGeneratedDataOptions {
   preGeneratedEmbeddings?: number[][];
   extractedText?: string;
   reuseGeneratedData?: boolean;
+  courseId?: string;
+  classId?: string;
 }
 
 @Injectable()
@@ -93,6 +95,8 @@ export class UploadDocumentUseCase {
         storageResult.fileName, // s3Key (mismo que fileName en este caso)
         fileHash,
         uploadedBy,
+        options?.courseId,
+        options?.classId,
       );
 
       // Guardar en base de datos

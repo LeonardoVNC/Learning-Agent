@@ -2,138 +2,166 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../../core/prisma/prisma.service';
 import { ExamRepositoryPort } from '../../domain/ports/exam.repository.port';
 import { Exam } from '../../domain/entities/exam.entity';
-import { Difficulty } from '../../domain/entities/difficulty.vo';
-import { PositiveInt } from '../../domain/entities/positive-int.vo';
-import { DistributionVO } from '../../domain/entities/distribution.vo';
-import { SavedExamDTO } from '../../domain/ports/saved-exam.repository.port';
+import { ExamFactory } from '../utils/exam.factory';
 
 @Injectable()
-export class ExamPrismaRepository implements ExamRepositoryPort {
+export class PrismaExamRepository implements ExamRepositoryPort {
+  private readonly logger = new Logger(PrismaExamRepository.name);
+
   constructor(private readonly prisma: PrismaService) {}
-  private readonly logger = new Logger(ExamPrismaRepository.name);
 
   async create(exam: Exam): Promise<Exam> {
-    this.logger.log(`create -> id=${exam.id}, subject=${exam.subject}, total=${exam.totalQuestions.getValue()}`);
-    const row = await this.prisma.exam.create({
+    const created = await this.prisma.exam.create({
       data: {
         id: exam.id,
-        subject: exam.subject,
+        title: exam.title,
+        status: exam.status as any,
+        classId: exam.classId,
         difficulty: exam.difficulty.getValue(),
         attempts: exam.attempts.getValue(),
-        totalQuestions: exam.totalQuestions.getValue(),
         timeMinutes: exam.timeMinutes.getValue(),
-        reference: exam.reference ?? null,
-
-        mcqCount:          exam.distribution?.value.multiple_choice ?? 0,
-        trueFalseCount:    exam.distribution?.value.true_false ?? 0,
-        openAnalysisCount: exam.distribution?.value.open_analysis ?? 0,
-        openExerciseCount: exam.distribution?.value.open_exercise ?? 0,
-
-        createdAt: exam.createdAt,
-        approvedAt: exam.approvedAt ?? null,
+        reference: exam.reference,
       },
     });
-    this.logger.log(`create <- prisma created id=${row.id}`);
 
-    const sum =
-      row.mcqCount +
-      row.trueFalseCount +
-      row.openAnalysisCount +
-      row.openExerciseCount;
+    return ExamFactory.rehydrate({
+      id: created.id,
+      title: created.title,
+      status: created.status as any,
+      classId: created.classId,
+      difficulty: created.difficulty,
+      attempts: created.attempts,
+      timeMinutes: created.timeMinutes,
+      reference: created.reference,
+      createdAt: created.createdAt,
+      updatedAt: created.updatedAt,
+    });
+  }
 
-    const distVO =
-      sum > 0
-        ? new DistributionVO(
-            {
-              multiple_choice: row.mcqCount,
-              true_false: row.trueFalseCount,
-              open_analysis: row.openAnalysisCount,
-              open_exercise: row.openExerciseCount,
-            },
-            row.totalQuestions,
-          )
-        : null;
+  async findByIdOwned(id: string, teacherId: string): Promise<Exam | null> {
+    const found = await this.prisma.exam.findFirst({
+      where: {
+        id,
+        class: { course: { teacherId } },
+      },
+    });
+    if (!found) return null;
 
-    return new Exam(
-      row.id,
-      row.subject,
-      Difficulty.create(row.difficulty),
-      PositiveInt.create('Intentos', row.attempts),
-      PositiveInt.create('Total de preguntas', row.totalQuestions),
-      PositiveInt.create('Tiempo (min)', row.timeMinutes),
-      row.reference ?? null,
-      distVO,     
-      row.createdAt,
-      row.updatedAt,
-      row.approvedAt ?? undefined,
+    return ExamFactory.rehydrate({
+      id: found.id,
+      title: found.title,
+      status: found.status as any,
+      classId: found.classId,
+      difficulty: found.difficulty,
+      attempts: found.attempts,
+      timeMinutes: found.timeMinutes,
+      reference: found.reference,
+      createdAt: found.createdAt,
+      updatedAt: found.updatedAt,
+    });
+  }
+
+  async listByClassOwned(classId: string, teacherId: string): Promise<Exam[]> {
+    const rows = await this.prisma.exam.findMany({
+      where: {
+        classId,
+        class: { course: { teacherId } },
+      },
+      orderBy: [{ createdAt: 'desc' }],
+    });
+
+    return rows.map((r) =>
+      ExamFactory.rehydrate({
+        id: r.id,
+        title: r.title,
+        status: r.status as any,
+        classId: r.classId,
+        difficulty: r.difficulty,
+        attempts: r.attempts,
+        timeMinutes: r.timeMinutes,
+        reference: r.reference,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+      }),
     );
   }
 
-  async findById(id: string): Promise<Exam | null> {
-    const row = await this.prisma.exam.findUnique({ where: { id } });
-    if (!row) return null;
+  async updateMetaOwned(
+    id: string,
+    teacherId: string,
+    patch: Partial<Pick<Exam, 'title' | 'status' | 'classId'>>,
+  ): Promise<Exam> {
+    const owned = await this.prisma.exam.findFirst({
+      where: { id, class: { course: { teacherId } } },
+      select: { id: true, classId: true },
+    });
+    if (!owned) {
+      this.logger.warn(`updateMetaOwned: examen no encontrado o ajeno. id=${id}, teacherId=${teacherId}`);
+      const fallback = await this.prisma.exam.findUnique({ where: { id } });
+      if (!fallback) {
+        throw new Error('Exam not found');
+      }
+      return ExamFactory.rehydrate({
+        id: fallback.id,
+        title: fallback.title,
+        status: fallback.status as any,
+        classId: fallback.classId,
+        difficulty: fallback.difficulty,
+        attempts: fallback.attempts,
+        timeMinutes: fallback.timeMinutes,
+        reference: fallback.reference,
+        createdAt: fallback.createdAt,
+        updatedAt: fallback.updatedAt,
+      });
+    }
+    let nextClassId = patch.classId;
+    if (nextClassId) {
+      const target = await this.prisma.classes.findFirst({
+        where: { id: nextClassId, course: { teacherId } },
+        select: { id: true },
+      });
+      if (!target) {
+        this.logger.warn(
+          `updateMetaOwned: classId destino no pertenece al docente. classId=${nextClassId}, teacherId=${teacherId}. Se ignora el cambio.`,
+        );
+        nextClassId = undefined;
+      }
+    }
 
-    const sum =
-      row.mcqCount +
-      row.trueFalseCount +
-      row.openAnalysisCount +
-      row.openExerciseCount;
-
-    const distVO =
-      sum > 0
-        ? new DistributionVO(
-            {
-              multiple_choice: row.mcqCount,
-              true_false: row.trueFalseCount,
-              open_analysis: row.openAnalysisCount,
-              open_exercise: row.openExerciseCount,
-            },
-            row.totalQuestions,
-          )
-        : null;
-
-    return new Exam(
-      row.id,
-      row.subject,
-      Difficulty.create(row.difficulty),
-      PositiveInt.create('Intentos', row.attempts),
-      PositiveInt.create('Total de preguntas', row.totalQuestions),
-      PositiveInt.create('Tiempo (min)', row.timeMinutes),
-      row.reference ?? null,
-      distVO,
-      row.createdAt,
-      row.updatedAt,
-      row.approvedAt ?? undefined, 
-    );
-  }
-
-  async approve(id: string): Promise<void> {
-    this.logger.log(`approve -> id=${id}`);
-    const row = await this.prisma.exam.findUnique({ where: { id } });
-    if (!row) throw new Error('Exam not found');
-    if (row.approvedAt) throw new Error('Exam already approved');
-    await this.prisma.exam.update({
+    const updated = await this.prisma.exam.update({
       where: { id },
-      data: { approvedAt: new Date() },
+      data: {
+        ...(patch.title !== undefined ? { title: patch.title } : {}),
+        ...(patch.status !== undefined ? { status: patch.status as any } : {}),
+        ...(nextClassId !== undefined ? { classId: nextClassId } : {}),
+      },
     });
-    this.logger.log(`approve <- id=${id}`);
+
+    return ExamFactory.rehydrate({
+      id: updated.id,
+      title: updated.title,
+      status: updated.status as any,
+      classId: updated.classId,
+      difficulty: updated.difficulty,
+      attempts: updated.attempts,
+      timeMinutes: updated.timeMinutes,
+      reference: updated.reference,
+      createdAt: updated.createdAt,
+      updatedAt: updated.updatedAt,
+    });
   }
 
-    async findByExamId(examId: string): Promise<SavedExamDTO | null> {
-    const r = await this.prisma.savedExam.findUnique({
-      where: { examId },
+  async teacherOwnsClass(classId: string, teacherId: string): Promise<boolean> {
+    const owns = await this.prisma.classes.count({
+      where: { id: classId, course: { teacherId } },
     });
-    if (!r) return null;
-    return {
-      id: r.id,
-      title: r.title,
-      content: r.content,
-      status: r.status as any,
-      courseId: r.courseId,
-      teacherId: r.teacherId,
-      createdAt: r.createdAt,
-      source: 'saved',
-    };
+    return owns > 0;
   }
 
+  async deleteOwned(id: string, teacherId: string): Promise<void> {
+    // Sin excepciones de Nest aquí; los casos de uso validan antes.
+    await this.prisma.exam.deleteMany({
+      where: { id, class: { course: { teacherId } } },
+    });
+  }
 }

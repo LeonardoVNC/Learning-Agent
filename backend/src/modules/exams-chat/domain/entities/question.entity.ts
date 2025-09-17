@@ -1,7 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 
 export type QuestionStatus = 'generated' | 'invalid' | 'published';
-
 export type QuestionType = 'multiple_choice' | 'true_false' | 'open_analysis' | 'open_exercise';
 
 export class Question {
@@ -56,7 +55,21 @@ export class Question {
     status?: QuestionStatus,
     difficulty?: number | null
   ) {
-    return new Question(text, type, options, status, undefined, undefined, undefined, undefined, undefined, 0, undefined, 0, difficulty ?? null);
+    return new Question(
+      text,
+      type,
+      options,
+      status,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      0,
+      undefined,
+      0,
+      difficulty ?? null
+    );
   }
 
   static rehydrate(payload: {

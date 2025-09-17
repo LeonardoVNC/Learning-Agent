@@ -34,7 +34,10 @@ describe('PublishGeneratedQuestionUseCase', () => {
 
   it('uses signature to detect duplicates even with options', async () => {
     await useCase.execute({ text: 'Pregunta', options: ['A', 'B'] });
-    const res = await useCase.execute({ text: 'Pregunta', options: ['A', 'B'] });
+    const res = await useCase.execute({
+      text: 'Pregunta',
+      options: ['A', 'B'],
+    });
     expect(res.result).toBe('duplicate');
   });
 });

@@ -156,11 +156,16 @@ model Document {
   courseId         String?
   course           Course?                   @relation(fields: [courseId], references: [id])
 
+  // Relación opcional con Classes/Período para documentos específicos de un período
+  classId          String?
+  class            Classes?                  @relation(fields: [classId], references: [id])
+
   // Relations para RAG
   chunks           DocumentChunk[]
   categories       DocumentCategoryMapping[]
   processingJobs   ProcessingJob[]
-
+  documentIndex    DocumentIndex?
+  
   // Información adicional extraída
   pageCount        Int?                      // Número de páginas (PDFs)
   documentTitle    String?                   // Título extraído del documento
@@ -265,6 +270,99 @@ model ProcessingJob {
 
 /**
  * ===========================
+ * Document Index Models
+ * ===========================
+ */
+
+model DocumentIndex {
+  id          String    @id @default(uuid())
+  documentId  String    @unique
+  document    Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  title       String
+  status      IndexStatus @default(GENERATED)
+  
+  // Metadatos de generación
+  generatedAt DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Configuración usada para generar el índice
+  config      Json?     // Configuración de generación (idioma, nivel de detalle, etc.)
+  
+  // Relaciones con capítulos
+  chapters    IndexChapter[]
+  
+  @@index([documentId])
+  @@index([status])
+  @@map("document_indexes")
+}
+
+model IndexChapter {
+  id          String    @id @default(uuid())
+  indexId     String
+  index       DocumentIndex @relation(fields: [indexId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?   @db.Text
+  order       Int       // Orden del capítulo en el índice
+  
+  // Relaciones
+  subtopics   IndexSubtopic[]
+  exercises   IndexExercise[]
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([indexId, order])
+  @@map("index_chapters")
+}
+
+model IndexSubtopic {
+  id          String    @id @default(uuid())
+  chapterId   String
+  chapter     IndexChapter @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  
+  title       String
+  description String?   @db.Text
+  order       Int       // Orden del subtema en el capítulo
+  
+  // Relaciones
+  exercises   IndexExercise[]
+  
+  createdAt   DateTime  @default(now())
+  
+  @@index([chapterId, order])
+  @@map("index_subtopics")
+}
+
+model IndexExercise {
+  id            String    @id @default(uuid())
+  
+  // Puede pertenecer a un capítulo o a un subtema
+  chapterId     String?
+  subtopicId    String?
+  chapter       IndexChapter? @relation(fields: [chapterId], references: [id], onDelete: Cascade)
+  subtopic      IndexSubtopic? @relation(fields: [subtopicId], references: [id], onDelete: Cascade)
+  
+  type          ExerciseType
+  title         String
+  description   String    @db.Text
+  difficulty    ExerciseDifficulty
+  estimatedTime String?   // Ej: "15 minutos"
+  keywords      String[]  // Array de palabras clave
+  
+  order         Int       // Orden del ejercicio
+  
+  createdAt     DateTime  @default(now())
+  
+  @@index([chapterId])
+  @@index([subtopicId])
+  @@index([type])
+  @@index([difficulty])
+  @@map("index_exercises")
+}
+
+/**
+ * ===========================
  * Enums para Document Processing
  * ===========================
  */
@@ -298,10 +396,28 @@ enum ChunkType {
   TEXT         // Chunk de texto normal
   TITLE        // Título o encabezado
   TABLE        // Contenido de tabla
-  LIST         // Lista o enumeración
-  CODE         // Código o texto técnico
-  FORMULA      // Fórmula matemática
-  METADATA     // Metadatos del documento
+}
+
+enum IndexStatus {
+  GENERATING   // Índice en proceso de generación
+  GENERATED    // Índice generado exitosamente
+  ERROR        // Error en la generación
+  OUTDATED     // Índice desactualizado (documento modificado)
+}
+
+enum ExerciseType {
+  CONCEPTUAL      // Preguntas conceptuales
+  PRACTICAL       // Ejercicios prácticos
+  ANALYSIS        // Análisis de casos
+  SYNTHESIS       // Síntesis de información
+  APPLICATION     // Aplicación de conceptos
+  PROBLEM_SOLVING // Resolución de problemas
+}
+
+enum ExerciseDifficulty {
+  BASIC           // Nivel básico
+  INTERMEDIATE    // Nivel intermedio
+  ADVANCED        // Nivel avanzado
 }
 
 /**
@@ -310,85 +426,111 @@ enum ChunkType {
  * ===========================
  */
 
-model Exam {
-  id             String   @id @default(uuid())
-  subject        String
-  difficulty     String
-  attempts       Int
-  totalQuestions Int
-  timeMinutes    Int
-  reference      String?  @db.Text
-
-  // distribución por tipo
-
-  mcqCount          Int   @default(0) // opción múltiple
-  trueFalseCount    Int   @default(0) // verdadero/falso
-  openAnalysisCount Int   @default(0) // abiertas: análisis
-  openExerciseCount Int   @default(0) // abiertas: ejercicio
-  approvedAt      DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  questions       ExamQuestion[]
-
-  @@index([subject])
-
-  savedExam      SavedExam?
-}
-
-// === Preguntas de Examen ===
+// ---------- Enums ----------
 enum QuestionKind {
   MULTIPLE_CHOICE
   TRUE_FALSE
   OPEN_ANALYSIS
   OPEN_EXERCISE
 }
-// Estado de publicación del examen guardado
+
 enum ExamStorageStatus {
   Guardado
   Publicado
 }
 
-model SavedExam {
-  id        Int               @id @default(autoincrement())
-  title     String
-  content   Json
-  status    ExamStorageStatus @default(Guardado)
+model Exam {
+  id             String            @id @default(uuid())
+  title          String            @default("Examen")
+  difficulty     String
+  attempts       Int
+  timeMinutes    Int
+  reference      String?           @db.Text
+  status         ExamStorageStatus @default(Guardado)
 
-  examId    String?           @unique
-  exam      Exam?             @relation(fields: [examId], references: [id], onDelete: Cascade)
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
 
-  // FK "lógicas" (sin relación Prisma)
-  courseId  String
-  teacherId String
+  // relation 1:N (Classes → Exams)
+  classId        String
+  class          Classes           @relation("ClassExams", fields: [classId], references: [id], onDelete: Restrict, onUpdate: Cascade)
 
-  createdAt DateTime          @default(now())
+  // questions
+  questions      ExamQuestion[]
 
-  @@index([courseId, createdAt])
-  @@index([teacherId, createdAt])
+  @@index([classId, createdAt])
+  @@index([title])
+  @@index([difficulty])
 }
 
 model ExamQuestion {
-  id                 String       @id @default(cuid())
-  examId             String
-  exam               Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
+  id        String       @id @default(cuid())
+  examId    String
+  exam      Exam         @relation(fields: [examId], references: [id], onDelete: Cascade)
 
-  kind               QuestionKind
-  text               String
+  kind      QuestionKind
+  text      String
+  order     Int
 
-  // Campos específicos por tipo
-  options            Json?        // MCQ
-  correctOptionIndex Int?         // MCQ
-  correctBoolean     Boolean?     // TRUE_FALSE
-  expectedAnswer     String?      // OPEN_*
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
 
-  order              Int
+  mcq        MCQ?
+  trueFalse  TrueFalse?
+  openAnalysis  OpenAnalysis?
+  openExercise  OpenExercise?
 
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
-
-  @@unique([examId, order])       // no dos preguntas con el mismo orden en un examen
+  @@unique([examId, order])
   @@index([examId, order])
 }
+
+// ---------- Subtypes (1:1 with ExamQuestion) ----------
+model MCQ {
+  questionId         String     @id
+  question           ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  correctOptionIndex Int
+
+  // options (1:N)
+  options            MCQOption[]
+
+  @@index([correctOptionIndex])
+}
+
+model MCQOption {
+  id     String @id @default(cuid())
+  mcqId  String
+  mcq    MCQ    @relation(fields: [mcqId], references: [questionId], onDelete: Cascade)
+
+  // display order and text
+  idx    Int
+  text   String
+
+  @@unique([mcqId, idx])
+  @@index([mcqId])
+}
+
+model TrueFalse {
+  questionId String       @id
+  question   ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  answer     Boolean
+}
+
+model OpenAnalysis {
+  questionId     String       @id
+  question       ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  expectedAnswer String
+}
+
+model OpenExercise {
+  questionId     String       @id
+  question       ExamQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  expectedAnswer String
+}
+
 
 /* ===========================
    Academic Management (classes and enrollment)
@@ -421,6 +563,7 @@ model Classes {
   // relation 1:N
   enrollment    Enrollment[]
   attendance Attendance[]
+  documents     Document[]        // Documentos específicos para este período/clase
 
   quizQuestions    QuizQuestion[]
   interviewQuestions InterviewQuestion[]
@@ -429,6 +572,9 @@ model Classes {
   courseId      String
   course        Course            @relation(fields: [courseId], references: [id])
 
+  // relation 1:N
+  exams         Exam[]            @relation("ClassExams")
+  
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt @default(now())
 }

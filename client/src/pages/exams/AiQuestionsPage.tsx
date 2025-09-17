@@ -250,7 +250,7 @@ export default function ExamsCreatePage() {
       title="Exámenes"
       subtitle="Creador de exámenes"
       breadcrumbs={[
-        { label: 'Home', href: '/' },
+        { label: 'Inicio', href: '/' },
         { label: 'Exámenes', href: '/exams' },
         { label: 'Crear', href: '/exams/create' },
         { label: 'Gestión de Exámenes', href: '/exams' },

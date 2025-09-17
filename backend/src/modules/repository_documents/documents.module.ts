@@ -13,6 +13,8 @@ import {
   EMBEDDING_GENERATOR_PORT,
   VECTOR_SEARCH_PORT,
   DELETED_DOCUMENT_REPOSITORY_PORT,
+  DOCUMENT_INDEX_GENERATOR_PORT,
+  DOCUMENT_INDEX_REPOSITORY_PORT,
 } from './tokens';
 
 // Domain ports
@@ -25,16 +27,17 @@ import { DocumentsController } from './infrastructure/http/documents.controller'
 import { EmbeddingsController } from './infrastructure/http/embeddings.controller';
 import { ContractDocumentsController } from './infrastructure/http/contract-documents.controller';
 
-
 // Infrastructure adapters
 import { S3StorageAdapter } from './infrastructure/storage/S3-storage.adapter';
 import { PrismaDocumentRepositoryAdapter } from './infrastructure/persistence/prisma-document-repository.adapter';
 import { PdfTextExtractionAdapter } from './infrastructure/text-extraction/pdf-text-extraction.adapter';
 import { SemanticTextChunkingAdapter } from './infrastructure/chunking/semantic-text-chunking.adapter';
 import { PrismaDocumentChunkRepositoryAdapter } from './infrastructure/persistence/prisma-document-chunk-repository.adapter';
+import { PrismaDocumentIndexRepositoryAdapter } from './infrastructure/persistence/prisma-document-index-repository.adapter';
 import { OpenAIEmbeddingAdapter } from './infrastructure/ai/openai-embedding.adapter';
 import { PgVectorSearchAdapter } from './infrastructure/search/pgvector-search.adapter';
 import { PrismaDeletedDocumentRepositoryAdapter } from './infrastructure/persistence/prisma-deleted-document-repository.adapter';
+import { GeminiIndexGeneratorAdapter } from './infrastructure/ai/gemini-index-generator.adapter';
 
 // Domain services
 import { DocumentChunkingService } from './domain/services/document-chunking.service';
@@ -55,6 +58,8 @@ import { GenerateDocumentEmbeddingsUseCase } from './application/use-cases/gener
 import { SearchDocumentsUseCase } from './application/use-cases/search-documents.use-case';
 import { CheckDocumentSimilarityUseCase } from './application/use-cases/check-document-similarity.usecase';
 import { CheckDeletedDocumentUseCase } from './application/use-cases/check-deleted-document.usecase';
+import { GenerateDocumentIndexUseCase } from './application/use-cases/generate-document-index.usecase';
+import { GetDocumentIndexUseCase } from './application/use-cases/get-document-index.usecase';
 import { NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { AuthMiddleware } from './infrastructure/http/middleware/auth.middleware';
 import { LoggingMiddleware } from './infrastructure/http/middleware/logging.middleware';
@@ -84,6 +89,10 @@ import { ContextualLoggerService } from './infrastructure/services/contextual-lo
     {
       provide: DOCUMENT_CHUNK_REPOSITORY_PORT,
       useClass: PrismaDocumentChunkRepositoryAdapter,
+    },
+    {
+      provide: DOCUMENT_INDEX_REPOSITORY_PORT,
+      useClass: PrismaDocumentIndexRepositoryAdapter,
     },
     {
       provide: DELETED_DOCUMENT_REPOSITORY_PORT,
@@ -301,6 +310,44 @@ import { ContextualLoggerService } from './infrastructure/services/contextual-lo
       ],
     },
 
+    // Index generation adapter
+    {
+      provide: DOCUMENT_INDEX_GENERATOR_PORT,
+      useClass: GeminiIndexGeneratorAdapter,
+    },
+
+    // Generate document index use case
+    {
+      provide: GenerateDocumentIndexUseCase,
+      useFactory: (
+        documentRepository: PrismaDocumentRepositoryAdapter,
+        chunkRepository: PrismaDocumentChunkRepositoryAdapter,
+        indexGenerator: GeminiIndexGeneratorAdapter,
+        indexRepository: PrismaDocumentIndexRepositoryAdapter,
+      ) => {
+        return new GenerateDocumentIndexUseCase(
+          documentRepository,
+          chunkRepository,
+          indexGenerator,
+          indexRepository,
+        );
+      },
+      inject: [
+        DOCUMENT_REPOSITORY_PORT,
+        DOCUMENT_CHUNK_REPOSITORY_PORT,
+        DOCUMENT_INDEX_GENERATOR_PORT,
+        DOCUMENT_INDEX_REPOSITORY_PORT,
+      ],
+    },
+
+    // Get document index use case
+    {
+      provide: GetDocumentIndexUseCase,
+      useFactory: (indexRepository: PrismaDocumentIndexRepositoryAdapter) => {
+        return new GetDocumentIndexUseCase(indexRepository);
+      },
+      inject: [DOCUMENT_INDEX_REPOSITORY_PORT],
+    },
     // Contract use cases
     {
       provide: GetDocumentsBySubjectUseCase,
@@ -341,6 +388,8 @@ import { ContextualLoggerService } from './infrastructure/services/contextual-lo
     SearchDocumentsUseCase,
     CheckDocumentSimilarityUseCase,
     CheckDeletedDocumentUseCase,
+    GenerateDocumentIndexUseCase,
+    GetDocumentIndexUseCase,
 
     // servicios de dominio
     DocumentChunkingService,
@@ -359,7 +408,7 @@ import { ContextualLoggerService } from './infrastructure/services/contextual-lo
 })
 export class DocumentsModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer
+    consumer;
 
     consumer
       .apply(LoggingMiddleware)

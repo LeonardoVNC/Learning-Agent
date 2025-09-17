@@ -1,6 +1,7 @@
 import type { FC } from 'react';
 import { Card, Typography, Button, Row, Col, Space, Statistic } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
+import { palette } from '../../theme';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -119,8 +120,8 @@ Este documento explora los fundamentos básicos de la IA, sus aplicaciones actua
           maxHeight: 400, 
           overflow: 'auto', 
           padding: 16, 
-          backgroundColor: '#fafafa', 
-          border: '1px solid #f0f0f0', 
+          backgroundColor: palette.neutral50, 
+          border: `1px solid ${palette.neutral300}`, 
           borderRadius: 4 
         }}>
           <Paragraph

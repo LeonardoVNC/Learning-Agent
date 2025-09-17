@@ -134,12 +134,6 @@ export class PgVectorSearchAdapter implements VectorSearchPort {
           similarity: (results as any[])[0].similarity_score,
           chunkId: (results as any[])[0].id
         });
-      } else {
-        // DEBUG: Verificar si hay chunks con embeddings en la BD
-        const totalChunksWithEmbeddings = await this.prisma.$queryRawUnsafe(
-          'SELECT COUNT(*) as count FROM document_chunks WHERE embedding IS NOT NULL'
-        );
-        console.log(`🔍 PgVector DEBUG: Total chunks con embeddings en BD:`, totalChunksWithEmbeddings);
       }
 
       // mapear resultados a la interfaz esperada

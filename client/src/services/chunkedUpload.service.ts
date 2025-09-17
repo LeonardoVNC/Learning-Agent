@@ -16,6 +16,8 @@ export interface ChunkedUploadOptions {
   maxRetries?: number;
   onProgress?: (progress: ChunkedUploadProgress) => void;
   onChunkComplete?: (chunkIndex: number, totalChunks: number) => void;
+  courseId?: string;
+  classId?: string;
 }
 
 export interface ChunkedUploadSession {
@@ -129,8 +131,7 @@ class ChunkedUploadService {
 
   async uploadFileWithChunks(
     file: File,
-    options: ChunkedUploadOptions = {},
-    userId?: string | null
+    options: ChunkedUploadOptions = {}
   ): Promise<ChunkedUploadResult> {
     const sessionId = `upload_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     
@@ -164,7 +165,10 @@ class ChunkedUploadService {
       }
 
       const { documentService } = await import('./documents.service');
-      const result = await documentService.uploadDocument(file, userId);
+      const result = await documentService.uploadDocument(file, {
+        courseId: options.courseId,
+        classId: options.classId
+      });
 
       if (!result.success) {
         throw new Error('Error uploading document');

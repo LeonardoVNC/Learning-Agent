@@ -12,6 +12,11 @@ interface ChatWithIARequest {
   question: string;
 }
 
+export function useClassContext(): string {
+  const { id } = useParams<{ id: string }>();
+  return id?.trim() ?? "";
+}
+
 export const useChatLogic = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
@@ -112,13 +117,13 @@ const fallbackData: ProgressData = {
 };
 
 export function useProgressData(): ProgressData {
-  const { id: classId } = useParams<{ id: string }>();
+  const classId = useClassContext();
   const { actualClass, fetchClassById } = useClasses();
   const [data, setData] = useState<ProgressData>(fallbackData);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!classId || classId.trim() === "") return;
+    if (!classId) return;
     setLoading(true);
     fetchClassById(classId).finally(() => setLoading(false));
   }, [classId, fetchClassById]);

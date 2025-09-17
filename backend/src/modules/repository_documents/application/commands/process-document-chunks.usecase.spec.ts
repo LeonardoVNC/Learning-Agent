@@ -26,7 +26,14 @@ describe('ProcessDocumentChunksUseCase', () => {
       status: 'success',
       savedChunks: [1, 2],
       processingTimeMs: 100,
-      chunkingResult: { statistics: { averageChunkSize: 50, minChunkSize: 10, maxChunkSize: 100, actualOverlapPercentage: 0 } },
+      chunkingResult: {
+        statistics: {
+          averageChunkSize: 50,
+          minChunkSize: 10,
+          maxChunkSize: 100,
+          actualOverlapPercentage: 0,
+        },
+      },
     };
     chunkingServiceMock.processDocumentChunks.mockResolvedValue(resultMock);
 

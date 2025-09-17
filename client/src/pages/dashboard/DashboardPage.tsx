@@ -14,7 +14,7 @@ export default function DashboardPage() {
       subtitle={
         "Welcome back — focus on what moves the needle. " + formatTodayEs()
       }
-      breadcrumbs={[{ label: "Home", href: "/" }, { label: "Dashboard" }]}
+      breadcrumbs={[{ label: "Inicio", href: "/" }, { label: "Tablero" }]}
     >
       {isTeacher ? <ProfessorHome /> : <StudentHome />}
     </PageTemplate>

@@ -14,6 +14,10 @@ const implProvider = {
       return require('../llm/infrastructure/adapters/gemini.adapter')
         .GeminiAdapter;
     }
+    else if (provider === 'deepseek') {
+      return require('../llm/infrastructure/adapters/ds.adapter')
+        .DeepseekAdapter;
+    }
 
     return OllamaAdapter;
   })(),

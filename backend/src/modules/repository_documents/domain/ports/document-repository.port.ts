@@ -96,6 +96,19 @@ export interface DocumentRepositoryPort {
   findAll(offset?: number, limit?: number): Promise<Document[]>;
 
   /**
+   * Lista documentos con filtros opcionales por course y/o class
+   * @param filters Filtros opcionales
+   * @param offset Número de registros a saltar
+   * @param limit Número máximo de registros a retornar
+   * @returns Lista de documentos filtrados
+   */
+  findWithFilters(
+    filters?: { courseId?: string; classId?: string },
+    offset?: number,
+    limit?: number,
+  ): Promise<Document[]>;
+
+  /**
    * Cuenta el total de documentos
    * @returns Número total de documentos
    */

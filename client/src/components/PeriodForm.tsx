@@ -9,13 +9,13 @@ import {
   ConfigProvider,
   Tooltip,
 } from "antd";
+import esES from "antd/locale/es_ES";
 import { useFormik } from "formik";
 import * as yup from "yup";
 import dayjs, { Dayjs } from "dayjs";
-import esES from "antd/locale/es_ES";
-import "dayjs/locale/es";
 import isBetween from "dayjs/plugin/isBetween";
 import customParseFormat from "dayjs/plugin/customParseFormat";
+import "dayjs/locale/es";
 
 import type { Course } from "../interfaces/courseInterface";
 import type { Clase, CreateClassDTO } from "../interfaces/claseInterface";

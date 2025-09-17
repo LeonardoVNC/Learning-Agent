@@ -60,6 +60,10 @@ export class ContractDocumentsController {
     this.genAI = new GoogleGenerativeAI(apiKey);
   }
 
+  private getMaxOutputTokens(): number {
+    return this.configService.get<number>('GEMINI_MAX_OUTPUT_TOKENS') || 512;
+  }
+
   @Get('subject/:subjectId/documents')
   async getDocumentsBySubject(
     @Param('subjectId') subjectId: string,
@@ -241,14 +245,6 @@ export class ContractDocumentsController {
       // 7. Obtener número de páginas del documento
       const pageCount = document.pageCount || Math.ceil(chunks.length / 2) || 1;
 
-      this.logger.log('Document index generated successfully', {
-        docId,
-        indexLength: formattedIndex.length,
-        chaptersCount: documentIndex.chapters.length,
-        pageCount,
-        summaryLength: summary.length,
-      });
-
       return new DocumentContentResponseDto(
         formattedIndex,
         new DocumentContentMetadataDto(pageCount, summary),
@@ -305,7 +301,7 @@ export class ContractDocumentsController {
   }
 
   /**
-   * Genera el índice del documento usando Gemini AI con fallback
+   * Generate the document index using Gemini AI with a fallback option
    */
   private async generateDocumentIndex(
     documentId: string,
@@ -313,24 +309,24 @@ export class ContractDocumentsController {
     chunks: any[],
   ): Promise<DocumentIndex> {
     try {
-      console.log(`Generando índice para documento: ${documentTitle}`);
-      console.log(`Procesando todos los ${chunks.length} chunks en lotes`);
+  this.logger.log(`Generating index for document: ${documentTitle}`);
+  this.logger.log(`Processing all ${chunks.length} chunks in batches`);
 
-      // Procesar todos los chunks en lotes pequeños
-      const batchSize = 50; // Tamaño de lote para evitar límites de tokens
+      // Process all chunks in small batches
+      const batchSize = 50; // Batch size to avoid token limits
       const allChapters: IndexChapter[] = [];
 
-      // Ordenar chunks por índice
+      // Sort chunks by index
       const sortedChunks = chunks.sort((a, b) => a.chunkIndex - b.chunkIndex);
 
-      // Procesar en lotes
+      // Process in batches
       for (let i = 0; i < sortedChunks.length; i += batchSize) {
         const batch = sortedChunks.slice(i, i + batchSize);
         const batchNumber = Math.floor(i / batchSize) + 1;
         const totalBatches = Math.ceil(sortedChunks.length / batchSize);
 
-        console.log(
-          `Procesando lote ${batchNumber}/${totalBatches} (${batch.length} chunks)`,
+        this.logger.log(
+          `Processing batch ${batchNumber}/${totalBatches} (${batch.length} chunks)`,
         );
 
         try {
@@ -343,17 +339,20 @@ export class ContractDocumentsController {
 
           allChapters.push(...batchChapters);
 
-          // Pequeña pausa entre lotes para evitar rate limits
+          // Short pause between batches to avoid rate limits
           if (i + batchSize < sortedChunks.length) {
             await new Promise((resolve) => setTimeout(resolve, 1000));
           }
         } catch (batchError) {
-          console.warn(
-            `Error en lote ${batchNumber}, usando fallback:`,
-            batchError,
-          );
+          this.logger.warn(`Error in batch ${batchNumber}, using fallback:`, {
+            error:
+              batchError instanceof Error
+                ? batchError.message
+                : String(batchError),
+            batchNumber,
+          });
 
-          // Generar capítulos básicos para este lote
+          // Generate basic chapters for this batch
           const fallbackChapters = this.generateFallbackChaptersForBatch(
             batch,
             batchNumber,
@@ -362,7 +361,7 @@ export class ContractDocumentsController {
         }
       }
 
-      // Crear el índice final
+      // Create the final index
       const documentIndex = new DocumentIndex(
         this.generateId(),
         documentId,
@@ -372,13 +371,16 @@ export class ContractDocumentsController {
         IndexStatus.GENERATED,
       );
 
-      console.log(
-        `Índice generado con ${documentIndex.chapters.length} capítulos de ${chunks.length} chunks`,
+      this.logger.log(
+        `Index generated with ${documentIndex.chapters.length} chapters from ${chunks.length} chunks`,
       );
 
       return documentIndex;
     } catch (error) {
-      console.error('Error generando índice con Gemini:', error);
+      this.logger.error(
+        'Error generating index with Gemini:',
+        error instanceof Error ? error : String(error),
+      );
 
       // Fallback: generar índice básico sin AI
       return this.generateFallbackIndex(documentId, documentTitle, chunks);
@@ -398,7 +400,7 @@ export class ContractDocumentsController {
       model: 'gemini-1.5-flash',
       generationConfig: {
         temperature: 0.7,
-        maxOutputTokens: 4096, // Reducido para lotes más pequeños
+        maxOutputTokens: this.getMaxOutputTokens(), // Made configurable via GEMINI_MAX_OUTPUT_TOKENS env var
       },
     });
 
@@ -412,20 +414,55 @@ export class ContractDocumentsController {
       totalBatches,
     );
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
-
-    // Parsear la respuesta JSON del lote
-    const batchData: any = this.parseGeminiResponse(text);
-
-    return (
-      batchData.chapters?.map((chapter: any) => this.mapChapter(chapter)) || []
+    // explicit timeout
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(
+        () => reject(new Error('Timeout: El modelo tomó demasiado tiempo')),
+        45000,
+      ),
     );
+
+    const generation = model.generateContent(prompt);
+    
+    try {
+      const result = await Promise.race([generation, timeout]);
+      const response = result.response;
+      const text = response.text();
+
+      // Validate response is not too long
+      if (text.length > 25000) {
+        this.logger.warn(
+          `Response too long (${text.length} chars), truncating...`,
+        );
+        const truncatedText = text.substring(0, 25000);
+        // Ensure valid JSON ending
+        const lastBrace = truncatedText.lastIndexOf('}');
+        if (lastBrace > 0) {
+          const validJson = truncatedText.substring(0, lastBrace + 1);
+          const batchData: any = this.parseGeminiResponse(validJson);
+          return (
+            batchData.chapters?.map((chapter: any) => this.mapChapter(chapter)) || []
+          );
+        }
+      }
+
+      // Parse batch JSON response
+      const batchData: any = this.parseGeminiResponse(text);
+      return (
+        batchData.chapters?.map((chapter: any) => this.mapChapter(chapter)) || []
+      );
+    } catch (error) {
+      this.logger.error(
+        'Error in contract generation:',
+        error instanceof Error ? error : String(error),
+      );
+      // Return empty array on error
+      return [];
+    }
   }
 
   /**
-   * Genera capítulos básicos para un lote cuando falla la AI
+   * Generates basic chapters for a batch when the AI ​​fails.
    */
   private generateFallbackChaptersForBatch(
     batch: any[],
@@ -438,7 +475,7 @@ export class ContractDocumentsController {
       const chapterChunks = batch.slice(i, i + chunksPerChapter);
       const chapterNumber = Math.floor(i / chunksPerChapter) + 1;
 
-      // Extraer palabras clave del primer chunk
+      // Extract keywords from the first chunk
       const firstChunkContent: string = chapterChunks[0]?.content || '';
       const words: string[] = firstChunkContent
         .split(' ')
@@ -450,7 +487,7 @@ export class ContractDocumentsController {
           ? `Lote ${batchNumber} - Sección ${chapterNumber}: ${words.join(', ')}`
           : `Lote ${batchNumber} - Sección ${chapterNumber}`;
 
-      // Crear subtemas básicos
+      // Create basic subtopics
       const subtopics: IndexSubtopic[] = chapterChunks
         .slice(0, 3)
         .map((chunk, idx) => {
@@ -470,25 +507,25 @@ export class ContractDocumentsController {
   }
 
   /**
-   * Genera un índice básico cuando AI no está disponible
+   * Generates a basic index when AI is not available
    */
   private generateFallbackIndex(
     documentId: string,
     documentTitle: string,
     chunks: any[],
   ): DocumentIndex {
-    console.log('Generando índice de fallback sin AI');
+  this.logger.log('Generating fallback index without AI');
 
-    // Crear capítulos básicos basados en el contenido
+    // Create basic chapters based on the content
     const chapters: IndexChapter[] = [];
-    const chunkGroups = Math.ceil(chunks.length / 10); // Agrupar cada 10 chunks
+    const chunkGroups = Math.ceil(chunks.length / 10);
 
     for (let i = 0; i < chunkGroups; i++) {
       const startChunk = i * 10;
       const endChunk = Math.min((i + 1) * 10, chunks.length);
       const groupChunks = chunks.slice(startChunk, endChunk);
 
-      // Extraer palabras clave del primer chunk del grupo
+      // Extract keywords from the first chunk of the group
       const firstChunkContent: string = groupChunks[0]?.content || '';
       const words: string[] = firstChunkContent
         .split(' ')
@@ -499,7 +536,7 @@ export class ContractDocumentsController {
           ? `Sección ${i + 1}: ${words.join(', ')}`
           : `Sección ${i + 1}`;
 
-      // Crear subtemas básicos
+      // Create basic subtopics
       const subtopics: IndexSubtopic[] = groupChunks
         .slice(0, 3)
         .map((chunk, idx) => {
@@ -526,7 +563,7 @@ export class ContractDocumentsController {
   }
 
   /**
-   * Construye el prompt para un lote específico
+   * Create the prompt for a specific batch
    */
   private buildBatchPrompt(
     documentTitle: string,
@@ -535,33 +572,32 @@ export class ContractDocumentsController {
     totalBatches: number,
   ): string {
     return `
-Eres un experto en análisis de documentos académicos. Analiza esta parte del documento y genera capítulos e índices detallados.
+Analiza el contenido y genera UN ÍNDICE MUY SIMPLE.
 
 DOCUMENTO: "${documentTitle}"
 LOTE: ${batchNumber} de ${totalBatches}
 
-CONTENIDO DEL LOTE:
+CONTENIDO:
 ${batchText}
 
-INSTRUCCIONES:
-1. Analiza SOLO el contenido de este lote
-2. Genera capítulos y subtemas basados en el contenido real
-3. Los títulos deben ser descriptivos y específicos del contenido
-4. Incluye entre 2-5 capítulos por lote dependiendo del contenido
-5. Cada capítulo debe tener 2-4 subtemas relevantes
+REGLAS ESTRICTAS:
+1. MÁXIMO 1 capítulo por lote
+2. MÁXIMO 1 subtema por capítulo
+3. Títulos MUY breves (máximo 20 caracteres)
+4. SIN descripciones largas
+5. JSON máximo 10 líneas TOTAL
+6. SI el documento es grande, crear índice MUY básico
+7. NUNCA exceder 10 líneas de JSON
 
-Responde ÚNICAMENTE con un JSON válido en este formato:
+Responde SOLO con este JSON compacto:
 {
-  "title": "Título descriptivo del lote",
+  "title": "Breve",
   "chapters": [
     {
-      "title": "Título del capítulo basado en contenido real",
-      "description": "Breve descripción",
+      "title": "Cap1",
+      "description": "",
       "subtopics": [
-        {
-          "title": "Subtema específico del contenido",
-          "description": "Descripción del subtema"
-        }
+        {"title": "Sub1", "description": ""}
       ]
     }
   ]
@@ -570,57 +606,56 @@ Responde ÚNICAMENTE con un JSON válido en este formato:
   }
 
   /**
-   * Construye el prompt para Gemini (método original mantenido para compatibilidad)
+   * create the prompt for Gemini
    */
   private buildPrompt(documentTitle: string, fullText: string): string {
     return `
-Eres un experto en análisis de documentos académicos. Analiza el siguiente documento completo y genera un índice detallado.
-
 DOCUMENTO: "${documentTitle}"
 
-CONTENIDO COMPLETO:
+CONTENIDO:
 ${fullText}
 
-INSTRUCCIONES CRÍTICAS:
-1. Lee y analiza TODO el contenido proporcionado
-2. Identifica las secciones principales del documento
-3. Para cada sección, identifica los subtemas específicos mencionados
-4. USA los títulos y conceptos REALES del documento, NO generes nombres genéricos
-5. Si encuentras secciones como "Introduction", "Related Work", "Methodology", etc., úsalas
-6. Los subtemas deben ser conceptos específicos mencionados en cada sección
+REGLAS ESTRICTAS:
+1. MÁXIMO 2 capítulos total
+2. MÁXIMO 1 subtema por capítulo
+3. Títulos MUY breves (máximo 15 caracteres)
+4. SIN descripciones largas
+5. JSON máximo 15 líneas TOTAL
+6. Para documentos grandes: crear índice MUY básico
+7. NUNCA exceder 15 líneas de JSON
 
-RESPONDE SOLO EN JSON:
+Responde SOLO con este JSON compacto:
 {
-  "title": "${documentTitle}",
+  "title": "Breve",
   "chapters": [
     {
-      "title": "Título real de la sección",
+      "title": "Cap1",
+      "description": "",
       "subtopics": [
-        {
-          "title": "Concepto específico mencionado"
-        }
+        {"title": "Sub1", "description": ""}
+      ]
+    },
+    {
+      "title": "Cap2", 
+      "description": "",
+      "subtopics": [
+        {"title": "Sub2", "description": ""}
       ]
     }
   ]
 }
-
-IMPORTANTE: 
-- Responde ÚNICAMENTE con el JSON válido
-- No incluyas texto adicional antes o después del JSON
-- Asegúrate de que el JSON sea válido y parseable
-- SOLO títulos de capítulos y subtemas
 `;
   }
 
   /**
-   * Parsea la respuesta de Gemini
+   * Parse Gemini's response
    */
   private parseGeminiResponse(response: string): any {
     try {
-      // Limpiar la respuesta de posibles caracteres extra
+      // Clean the response of any extra characters.
       let cleanResponse = response.trim();
 
-      // Buscar el JSON en la respuesta
+      // Find the JSON in the response
       const jsonStart = cleanResponse.indexOf('{');
       const jsonEnd = cleanResponse.lastIndexOf('}') + 1;
 
@@ -632,14 +667,14 @@ IMPORTANTE:
 
       return JSON.parse(cleanResponse);
     } catch (error) {
-      console.error('Error parseando respuesta de Gemini:', error);
-      console.error('Respuesta recibida:', response);
+  this.logger.error('Error parsing Gemini response:', error instanceof Error ? error.message : String(error));
+  this.logger.error('Response received:', response);
       throw new Error('La respuesta de Gemini no es un JSON válido');
     }
   }
 
   /**
-   * Mapea un capítulo desde la respuesta de Gemini
+   * Map a chapter based on Gemini's response
    */
   private mapChapter(chapterData: any): IndexChapter {
     const subtopics = (chapterData.subtopics || []).map((subtopic: any) =>
@@ -650,7 +685,7 @@ IMPORTANTE:
   }
 
   /**
-   * Mapea un subtema desde la respuesta de Gemini
+   * Map a subtopic from Gemini's response
    */
   private mapSubtopic(subtopicData: any): IndexSubtopic {
     return new IndexSubtopic(
@@ -661,22 +696,22 @@ IMPORTANTE:
   }
 
   /**
-   * Genera un resumen corto basado en los chunks del documento
+   * Generate a short summary based on the document chunks
    */
   private generateSummaryFromChunks(chunks: any[]): string {
     try {
-      // Tomar los primeros chunks para el resumen (máximo 3)
+      // Take the first few sections for the summary (maximum 3)
       const firstChunks = chunks.slice(0, 3);
       const combinedContent = firstChunks
         .map((chunk) => (chunk.content || chunk.text || '') as string)
         .join(' ')
-        .substring(0, 1000); // Limitar a 1000 caracteres
+        .substring(0, 1000); // Limit to 1000 characters
 
       if (!combinedContent.trim()) {
         return 'Documento técnico especializado';
       }
 
-      // Crear un resumen más completo basado en el contenido
+      // Create a more complete summary based on the content
       const sentences = combinedContent
         .split(/[.!?]+/)
         .filter((s) => s.trim().length > 20);
@@ -684,7 +719,7 @@ IMPORTANTE:
         .split(' ')
         .filter((word) => word.length > 4);
 
-      // Intentar crear un resumen con las primeras 2-3 oraciones
+      // Try to create a summary using the first 2-3 sentences.
       if (sentences.length >= 2) {
         const summary = sentences.slice(0, 2).join('. ').trim();
         if (summary.length > 50 && summary.length < 300) {
@@ -692,7 +727,7 @@ IMPORTANTE:
         }
       }
 
-      // Fallback: usar primera oración si es descriptiva
+      // Fallback: use the first sentence if it is descriptive
       if (sentences.length >= 1) {
         const firstSentence = sentences[0].trim();
         if (firstSentence.length > 30 && firstSentence.length < 200) {
@@ -700,7 +735,7 @@ IMPORTANTE:
         }
       }
 
-      // Último fallback con palabras clave
+      // Last fallback option using keywords
       const keyWords = words.slice(0, 3).join(', ');
       return `Documento técnico especializado que aborda temas relacionados con ${keyWords || 'metodologías avanzadas'}.`;
     } catch (error) {
@@ -712,7 +747,7 @@ IMPORTANTE:
   }
 
   /**
-   * Formatea el índice como string numerado (1.1, 1.2, 2.1, etc.)
+   * Format the index as a numbered string (1.1, 1.2, 2.1, etc.)
    */
   private formatIndexAsString(documentIndex: DocumentIndex): string {
     let result = `ÍNDICE DEL DOCUMENTO: ${documentIndex.title}\n\n`;
@@ -720,10 +755,10 @@ IMPORTANTE:
     documentIndex.chapters.forEach((chapter, chapterIndex) => {
       const chapterNumber = chapterIndex + 1;
 
-      // Título del capítulo
+      // Chapter title
       result += `${chapterNumber}. ${chapter.title}\n\n`;
 
-      // Subtemas del capítulo
+      // Subtopics of the chapter
       chapter.subtopics.forEach((subtopic, subtopicIndex) => {
         const subtopicNumber = subtopicIndex + 1;
         result += `${chapterNumber}.${subtopicNumber} ${subtopic.title}\n`;
@@ -736,7 +771,7 @@ IMPORTANTE:
   }
 
   /**
-   * Genera un ID único
+   * Generate a unique ID
    */
   private generateId(): string {
     return `idx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;

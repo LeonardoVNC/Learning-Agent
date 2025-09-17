@@ -16,6 +16,8 @@ export class Document {
     public readonly documentTitle?: string,
     public readonly documentAuthor?: string,
     public readonly language?: string,
+    public readonly courseId?: string,
+    public readonly classId?: string,
     public readonly uploadedAt: Date = new Date(),
     public readonly updatedAt: Date = new Date(),
   ) {}

@@ -6,6 +6,8 @@ export interface Document {
   size: number;
   downloadUrl: string;
   uploadedAt: string;
+  courseId?: string;
+  classId?: string;
 }
 
 export interface DocumentListResponse {

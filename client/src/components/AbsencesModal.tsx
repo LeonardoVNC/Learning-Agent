@@ -1,10 +1,11 @@
-import { Modal, Table, Empty, message, Typography, Button } from "antd";
 import { useEffect, useState } from "react";
-import dayjs from "dayjs";
-import type { StudentInfo } from "../interfaces/studentInterface";
-import type { AbsenceRow } from "../interfaces/attendanceInterface";
-import useAttendance from "../hooks/useAttendance";
+import { Modal, Table, Empty, message, Typography, Button } from "antd";
 import { CalendarOutlined } from "@ant-design/icons";
+import dayjs from "dayjs";
+
+import type { AbsenceRow } from "../interfaces/attendanceInterface";
+import type { StudentInfo } from "../interfaces/studentInterface";
+import useAttendance from "../hooks/useAttendance";
 
 interface AbsencesModalProps {
   open: boolean;

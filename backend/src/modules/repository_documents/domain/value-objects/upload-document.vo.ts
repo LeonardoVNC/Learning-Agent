@@ -27,6 +27,8 @@ export class DocumentListItem {
     public readonly size: number,
     public readonly downloadUrl: string,
     public readonly uploadedAt: Date,
+    public readonly courseId?: string,
+    public readonly classId?: string,
   ) {}
 }
 

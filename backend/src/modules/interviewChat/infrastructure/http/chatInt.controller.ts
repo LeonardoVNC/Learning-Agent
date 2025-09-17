@@ -1,12 +1,11 @@
-import { Controller, Post, Body, Get, Query, Inject } from '@nestjs/common';
-import { QuestionResponse } from './dto/question-response';
-import { ChatAnswer } from './dto/generate-advice';
-import { DEEPSEEK_PORT } from 'src/modules/deepseek/tokens';
-import type { DeepseekPort } from 'src/modules/deepseek/domain/ports/deepseek.port';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import {
   DoubleOptionResponse,
   MultipleSelectionResponse,
-} from 'src/modules/deepseek/domain/ports/response';
+} from 'src/modules/reinforcement/infrastructure/http/dto/response';
+import { DsIntService } from '../dsInt.service';
+import { ChatAnswer } from './dto/generate-advice';
+import { QuestionResponse } from './dto/question-response';
 
 interface CoachingResponse {
   generated_question: string;
@@ -16,23 +15,22 @@ interface CoachingResponse {
 
 @Controller('chatint')
 export class ChatIntController {
-  constructor(
-    @Inject(DEEPSEEK_PORT)
-    private readonly deepseekPort: DeepseekPort,
-  ) {}
-
+  constructor(private readonly dsService: DsIntService) {}
   @Get('question')
   async generateQuestion(
     @Query('topico') topico: string,
   ): Promise<QuestionResponse> {
-    return this.deepseekPort.generateQuestion(topico);
+    console.log('topico:', topico);
+    return this.dsService.generateQuestion(topico);
   }
 
+  // Get advice for an answer
   @Post('advice')
   async generateAdvice(
     @Body() chatAnswer: ChatAnswer,
   ): Promise<CoachingResponse> {
-    const respDs = await this.deepseekPort.generateAdvise(
+    console.log('answer:', chatAnswer);
+    const respDs = await this.dsService.generateAdvise(
       chatAnswer.question,
       chatAnswer.answer,
       chatAnswer.topic,
@@ -43,12 +41,12 @@ export class ChatIntController {
   async generateMultipleSelection(
     @Query('topico') topico: string,
   ): Promise<MultipleSelectionResponse> {
-    return this.deepseekPort.generateMultipleSelection(topico);
+    return await this.dsService.generateMultipleSelection(topico);
   }
   @Get('doubleOption')
   async generateDoubleOption(
     @Query('topico') topico: string,
   ): Promise<DoubleOptionResponse> {
-    return this.deepseekPort.generatedoubleOption(topico);
+    return await this.dsService.generatedoubleOption(topico);
   }
 }

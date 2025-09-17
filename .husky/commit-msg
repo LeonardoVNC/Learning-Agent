@@ -4,10 +4,26 @@ set -e
 commit_msg_file="$1"
 msg=$(cat "$commit_msg_file")
 
-# Conventional Commits pattern
 pattern='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9_.-]+\))?(!)?:\s.{1,}'
 
 if echo "$msg" | grep -Eq "$pattern"; then
+  # Valid commit, but add more checks
+  header=$(echo "$msg" | head -n1)
+
+  # Max length check (72 chars)
+  if [ ${#header} -gt 72 ]; then
+    echo "✖ Commit message header too long (max 72 chars)"
+    exit 1
+  fi
+
+  # Avoid overly vague commit messages - but allow reasonable ones
+  overly_vague='^(chore|fix|test|update):\s*$'
+  if echo "$msg" | grep -Eq "$overly_vague"; then
+    echo "✖ Commit message too vague. Be more descriptive!"
+    echo "  Example: Instead of 'fix: update', use 'fix(auth): handle null token'"
+    exit 1
+  fi
+
   echo "✔ Commit message valid"
   exit 0
 else
@@ -17,4 +33,3 @@ else
   echo "  chore: update dependencies"
   exit 1
 fi
-

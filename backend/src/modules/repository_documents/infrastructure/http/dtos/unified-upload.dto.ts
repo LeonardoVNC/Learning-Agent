@@ -52,4 +52,6 @@ export class UnifiedUploadRequestDto {
   similarityThreshold?: number;
   maxSimilarCandidates?: number;
   autoRestoreDeleted?: boolean | string;
+  courseId?: string;
+  classId?: string;
 }

@@ -14,6 +14,8 @@ export class DocumentService {
     s3Key: string,
     fileHash: string,
     uploadedBy: string,
+    courseId?: string,
+    classId?: string,
   ): Document {
     return new Document(
       id,
@@ -26,6 +28,14 @@ export class DocumentService {
       fileHash,
       uploadedBy,
       DocumentStatus.UPLOADED,
+      undefined, // extractedText
+      undefined, // textHash
+      undefined, // pageCount
+      undefined, // documentTitle
+      undefined, // documentAuthor
+      undefined, // language
+      courseId,
+      classId,
     );
   }
 
@@ -58,6 +68,8 @@ export class DocumentService {
       documentTitle,
       documentAuthor,
       language,
+      document.courseId,
+      document.classId,
       document.uploadedAt,
       new Date(),
     );
@@ -84,6 +96,8 @@ export class DocumentService {
       document.documentTitle,
       document.documentAuthor,
       document.language,
+      document.courseId,
+      document.classId,
       document.uploadedAt,
       new Date(),
     );
@@ -110,6 +124,8 @@ export class DocumentService {
       document.documentTitle,
       document.documentAuthor,
       document.language,
+      document.courseId,
+      document.classId,
       document.uploadedAt,
       new Date(),
     );

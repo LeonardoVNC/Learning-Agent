@@ -7,7 +7,7 @@ export type LlmMessage = {
 };
 
 export type LlmModel = {
-  provider: 'ollama' | 'openai' | 'gemini' | string;
+  provider: 'ollama' | 'openai' | 'gemini' | 'deepseek' |string;
   name: string;
 };
 

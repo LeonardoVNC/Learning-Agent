@@ -1,41 +1,30 @@
-import { IsIn, IsInt, IsNotEmpty, IsOptional, IsPositive, IsString, MaxLength, ValidateNested, Min, Max } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
-class DistributionDto {
-  @IsInt() @Min(0, { message: 'multiple_choice debe ser ≥ 0.' })
-  multiple_choice!: number;
-
-  @IsInt() @Min(0, { message: 'true_false debe ser ≥ 0.' })
-  true_false!: number;
-
-  @IsInt() @Min(0, { message: 'open_analysis debe ser ≥ 0.' })
-  open_analysis!: number;
-
-  @IsInt() @Min(0, { message: 'open_exercise debe ser ≥ 0.' })
-  open_exercise!: number;
+class DistributionDTO {
+  @IsOptional() @IsInt() @Min(0) @Max(999) multiple_choice!: number;
+  @IsOptional() @IsInt() @Min(0) @Max(999) true_false!: number;
+  @IsOptional() @IsInt() @Min(0) @Max(999) open_analysis!: number;
+  @IsOptional() @IsInt() @Min(0) @Max(999) open_exercise!: number;
 }
 
 export class CreateExamDto {
-  @IsString()
-  @IsNotEmpty({ message: 'Materia es obligatoria.' })
-  @MaxLength(200)
+  @IsString() @MaxLength(120)
+  title!: string;
+
+  @IsUUID()
+  classId!: string;
+
+  @IsString() @MaxLength(200)
   subject!: string;
 
   @IsString()
-  @IsIn(['fácil', 'medio', 'difícil'], { message: 'Dificultad inválida.' })
-  difficulty!: 'fácil' | 'medio' | 'difícil';
+  difficulty!: string;
 
-  @IsOptional()
-  @IsString()
-  @MaxLength(1000)
-  reference?: string;
-
-  @IsInt()
-  @IsPositive({ message: 'Intentos debe ser > 0.' })
+  @IsInt() @Min(1) @Max(10)
   attempts!: number;
 
-  @IsInt()
-  @IsPositive({ message: 'Total de preguntas debe ser > 0.' })
+  @IsInt() @Min(1) @Max(1000)
   totalQuestions!: number;
 
   @IsInt()
@@ -43,7 +32,12 @@ export class CreateExamDto {
   @Max(240, { message: 'Tiempo (minutos) máximo: 240.' })
   timeMinutes!: number;
 
-  @ValidateNested()
-  @Type(() => DistributionDto)
-  distribution!: DistributionDto;
+  @IsOptional() @IsString() @MaxLength(2000)
+  reference?: string | null;
+
+  @IsOptional() @ValidateNested() @Type(() => DistributionDTO)
+  distribution?: DistributionDTO;
+
+  @IsOptional() @IsEnum(['Guardado', 'Publicado'] as const)
+  status?: 'Guardado' | 'Publicado';
 }

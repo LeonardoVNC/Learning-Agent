@@ -1,0 +1,33 @@
+#!/usr/bin/env sh
+set -e
+
+echo "Running pre-push checks..."
+echo "Checking for lint errors in changed files only..."
+
+CHANGED_FILES=$(git diff --name-only origin/HEAD..HEAD | tr '\n' ' ')
+
+if [ -n "$CHANGED_FILES" ]; then
+  echo "Running lint on changed files only..."
+  
+  BACKEND_FILES=$(echo "$CHANGED_FILES" | grep -E '(src/|prisma/|\.ts)$' || true)
+  if [ -n "$BACKEND_FILES" ]; then
+    echo "Linting backend changes..."
+    npm --prefix backend run lint -- $BACKEND_FILES || echo "Lint warnings found, but continuing..."
+  fi
+
+  CLIENT_FILES=$(echo "$CHANGED_FILES" | grep -E '(client/|\.tsx|\.ts|\.js|\.jsx)$' || true)
+  if [ -n "$CLIENT_FILES" ]; then
+    echo "Linting client changes..."
+    npm --prefix client run lint -- $CLIENT_FILES || echo "Lint warnings found, but continuing..."
+  fi
+fi
+
+echo "Running critical tests..."
+
+BACKEND_CHANGES=$(echo "$CHANGED_FILES" | grep -E '(src/|prisma/)' || true)
+if [ -n "$BACKEND_CHANGES" ]; then
+  echo "Running backend tests..."
+  npm --prefix backend test -- --bail --passWithNoTests
+fi
+
+echo "All pre-push checks passed!"
