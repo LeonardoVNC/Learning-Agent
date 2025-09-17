@@ -16,7 +16,19 @@ async function bootstrap() {
 
   app.enableShutdownHooks();
 
-  app.enableCors();
+  // Configuración dinámica de CORS desde variable de entorno
+  const allowedOrigins = (process.env.CORS_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean);
+  app.enableCors({
+    origin: (origin, callback) => {
+      // Permitir peticiones sin origen (como Postman)
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error('Not allowed by CORS'));
+    },
+    credentials: true,
+  });
 
   await app.listen(process.env.PORT ?? 3000);
 }
